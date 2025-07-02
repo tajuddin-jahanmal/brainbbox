@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
 import { CountryPicker } from "react-native-country-codes-picker";
 import { DataProvider, LayoutProvider, RecyclerListView } from "recyclerlistview";
-import Colors, { ScreenWidth } from "../../constant";
+import Colors, { isAndroid, ScreenWidth } from "../../constant";
 import language from "../../localization";
 import useStore from "../../store/store.js";
 import Card from "../Card";
@@ -124,6 +124,7 @@ const PhoneInput = (props) =>
                     onChangeText={(text) => onChange(text.replace(/[^0-9]/g, ''), "value")}
                     keyboardType="numeric"
                     onSubmitEditing={() => onChange(!fields.showDropdown, "showDropdown")}
+                    placeholderTextColor={isAndroid ? "#808080" : "#C7C7CD"}
                 />
                 <TouchableOpacity style={Style.downIcon} onPress={() => onChange(!fields.showDropdown, "showDropdown")}>
                     <Entypo

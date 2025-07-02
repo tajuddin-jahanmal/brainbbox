@@ -1,5 +1,6 @@
 import React from "react";
 import { TextInput } from "react-native";
+import { isAndroid } from "../../constant/index.js";
 import Style from "./style.js";
 
 const Input = (props) =>
@@ -11,6 +12,7 @@ const Input = (props) =>
             placeholder={props.placeholder}
             style={[Style.input, props.style]}
             editable={!props.disabled}
+            placeholderTextColor={isAndroid ? "#808080" : "#C7C7CD"}
         />
     )
 };
