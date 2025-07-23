@@ -1,6 +1,7 @@
-import RNDateTimePicker from "@react-native-community/datetimepicker";
+// import RNDateTimePicker from "@react-native-community/datetimepicker";
 import React, { useState } from "react";
 import { Modal, Text, TouchableOpacity, View } from "react-native";
+import DatePicker from "react-native-date-picker";
 import language from "../../localization";
 import Button from "../Button";
 import Card from "../Card";
@@ -27,11 +28,12 @@ const BackupDateModal = (props) =>
 
     const dateChanger = (event, date) =>
 	{
-		if (event.type === "dismissed")
-		{
-			setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
-			return;
-		}
+        // in react-native-picker we don't have event
+		// if (event.type === "dismissed")
+		// {
+		// 	setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
+		// 	return;
+		// }
 
         let selectedDate = new Date(date);
 
@@ -86,7 +88,21 @@ const BackupDateModal = (props) =>
                         <Text style={[Style.tranInfo, isRTL && {textAlign: "right"}]}>{language.PickdateToCreateYourAppBackup}</Text>
 
                         <View style={[Style.fromToContainer, isRTL && {flexDirection: 'row-reverse'}]}>
-                            { fields.showDatePicker.visible && <RNDateTimePicker value={new Date()} onChange={(event, date) => dateChanger(event, date)} />  }
+                            {/* { fields.showDatePicker.visible && <z value={new Date()} onChange={(event, date) => dateChanger(event, date)} />  } */}
+                            {fields.showDatePicker.visible && (
+                                <DatePicker
+                                    modal
+                                    mode="date"
+                                    open={fields.showDatePicker.visible}
+                                    date={new Date()}
+                                    onConfirm={(date) => {
+                                        dateChanger(null, date);
+                                    }}
+                                    onCancel={() => {
+                                        setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
+                                    }}
+                                />
+                            )}
                             <Card
                                 style={Style.fromTo}
                                 onPress={() => onChange({visible: true, type: "from"}, "showDatePicker")}>

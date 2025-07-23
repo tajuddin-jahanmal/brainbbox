@@ -1,10 +1,11 @@
-import RNDateTimePicker from "@react-native-community/datetimepicker";
+// import RNDateTimePicker from "@react-native-community/datetimepicker";
 import { useIsFocused } from "@react-navigation/core";
 import * as FileSystem from 'expo-file-system';
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import React, { useContext, useEffect, useState } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
+import DatePicker from "react-native-date-picker";
 import { DataProvider, LayoutProvider, RecyclerListView } from "recyclerlistview";
 import Button from "../../../components/Button";
 import Card from "../../../components/Card";
@@ -491,11 +492,11 @@ const CustomerProfile = (props) =>
 
 	const dateChanger = (event, date) =>
 	{
-		if (event.type === "dismissed")
-		{
-			setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
-			return;
-		}
+		// if (event.type === "dismissed")
+		// {
+		// 	setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
+		// 	return;
+		// }
 
         let selectedDate = new Date(date);
 
@@ -609,7 +610,21 @@ const CustomerProfile = (props) =>
 
 				<View>
 					{fromCashbook && <View style={[Style.fromToContainer, isRTL && {flexDirection: "row-reverse"}]}>
-						{ fields.showDatePicker.visible && <RNDateTimePicker value={new Date()} onChange={(event, date) => dateChanger(event, date)} />  }
+						{/* { fields.showDatePicker.visible && <RNDateTimePicker value={new Date()} onChange={(event, date) => dateChanger(event, date)} />  } */}
+						{fields.showDatePicker.visible && (
+							<DatePicker
+								modal
+								mode="date"
+								open={fields.showDatePicker.visible}
+								date={new Date()}
+								onConfirm={(date) => {
+									dateChanger(null, date);
+								}}
+								onCancel={() => {
+									setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
+								}}
+							/>
+						)}
 						<Card
 							style={Style.fromTo}
 							onPress={() => !context.isGuest && onChange({visible: true, type: "from"}, "showDatePicker")}

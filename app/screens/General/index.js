@@ -6,11 +6,12 @@ import Header from "../../components/Header";
 import Style from "./Style";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import RNDateTimePicker from "@react-native-community/datetimepicker";
+// import RNDateTimePicker from "@react-native-community/datetimepicker";
 import * as FileSystem from 'expo-file-system';
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { PermissionsAndroid } from "react-native";
+import DatePicker from 'react-native-date-picker';
 import RNFS from "react-native-fs";
 import ArrowCardDropdown from "../../components/ArrowCardDropdown";
 import BackupDateModal from "../../components/BackupDateModal";
@@ -72,11 +73,11 @@ const General = (props) =>
 
     const dateChanger = async (event, date) =>
 	{
-		if (event.type === "dismissed")
-		{
-			onChange(false, "showPicker")
-			return;
-		}
+		// if (event.type === "dismissed")
+		// {
+		// 	onChange(false, "showPicker")
+		// 	return;
+		// }
 		onChange(false, "showPicker")
 
 		// const toDay = new Date(date.getTime() - (date.getTimezoneOffset()*60*1000)).toISOString().split('T')[0];
@@ -333,7 +334,21 @@ const General = (props) =>
 			<Header title={language.general} noBack />
 			<ScrollView>
 				<View style={Style.content}>
-					{ fields.showPicker && <RNDateTimePicker value={new Date()} onChange={(event, date) => dateChanger(event, date)} />  }
+					{/* { fields.showPicker && <RNDateTimePicker value={new Date()} onChange={(event, date) => dateChanger(event, date)} />  } */}
+					{fields.showPicker && (
+						<DatePicker
+							modal
+							mode="date"
+							open={fields.showPicker}
+							date={new Date()}
+							onConfirm={(date) => {
+								dateChanger(null, date);
+							}}
+							onCancel={() => {
+								onChange(false, "showPicker")
+							}}
+						/>
+					)}
 
 					<ArrowCardDropdown
 						title={language.profile}

@@ -166,7 +166,6 @@ const OppositeTransactions = (props) =>
 			return
 		setCashBook(prev => {
 			let summary = cashbookUser?.summary.find(perCurrency => perCurrency.currencyId == context.currency?.id)
-			console.log(summary, "summary");
 			return {
 				...prev,
 				owner: cashbookUser?.owner || {firstName: cashbookUser?.firstName, lastName: cashbookUser?.lastName},
