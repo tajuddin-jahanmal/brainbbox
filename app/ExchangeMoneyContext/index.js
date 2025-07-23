@@ -114,7 +114,7 @@ const ExchangeMoneyProvider = (props) =>
           if (hasSeenUpdate === null)
             await AsyncStorage.setItem("@hasSeenUpdate", JSON.stringify({version: currentVersion, seen: true}));
 
-          checkAppNewUpdate();
+          await checkAppNewUpdate();
         }
         
         const storedExpirationTime = await AsyncStorage.getItem('@guestExpirationTime');
@@ -359,7 +359,13 @@ const ExchangeMoneyProvider = (props) =>
                 text: language.updateNow,
                 onPress: async () => {
                   await AsyncStorage.setItem("@hasSeenUpdate", JSON.stringify({version: latestVersion, seen: true}));
-                  Linking.openURL(await VersionCheck.getStoreUrl());
+                  // Linking.openURL(await VersionCheck.getStoreUrl());
+                  const url = await VersionCheck.getStoreUrl();
+                  if (url) {
+                    Linking.openURL(url);
+                  } else {
+                    Alert.alert("Error", "Store link not available to check the app update.");
+                  }
                 },
               },
             ]
