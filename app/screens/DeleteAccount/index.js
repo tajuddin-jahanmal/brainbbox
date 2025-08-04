@@ -45,7 +45,7 @@ const DeleteAccount = (props) =>
             setFields(prev => ({
                 ...prev,
                 firstName: context.customer?.firstName || "",
-                lastName: context.customer?.lastName || "",
+                lastName: context.customer?.lastName || "_",
                 email: context.customer?.email || context.user?.email || "",
             }));
         }
