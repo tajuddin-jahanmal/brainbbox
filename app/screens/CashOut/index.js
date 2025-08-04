@@ -1,7 +1,8 @@
 import { useIsFocused } from "@react-navigation/core";
-import React, { useContext, useEffect, useState } from "react";
-import { Alert, ToastAndroid, View } from "react-native";
+import { useContext, useEffect, useState } from "react";
+import { Alert, View } from "react-native";
 import { SelectList } from "react-native-dropdown-select-list";
+import Toast from "react-native-toast-message";
 import Customers from "../../DB/Customer";
 import Queue from "../../DB/Queue";
 import SelfCashDB from "../../DB/SelfCash";
@@ -37,6 +38,16 @@ const CashOut = (props) =>
         type: false,
         showAlert: { visible: false, message: "" },
         currenciesData: [],
+    };
+
+    const showToast = () => {
+        Toast.show({
+            type: 'success',
+            text1: language.success,
+            text2: language.CashOutSuccessfullyAdded,
+            swipeable: true,
+            visibilityTime: 2000,
+        });
     };
 
     const [ globalState, dispatch ] = useStore(false);
@@ -246,7 +257,8 @@ const CashOut = (props) =>
             );
 
 			goBack();
-			ToastAndroid.show(language.CashOutSuccessfullyAdded, ToastAndroid.SHORT);
+			// ToastAndroid.show(language.CashOutSuccessfullyAdded, ToastAndroid.SHORT);
+            showToast();
 			return;
 		}
 
@@ -383,7 +395,8 @@ const CashOut = (props) =>
 
 
         goBack();
-        ToastAndroid.show(language.CashOutSuccessfullyAdded, ToastAndroid.SHORT);
+        // ToastAndroid.show(language.CashOutSuccessfullyAdded, ToastAndroid.SHORT);
+        showToast();
     }
 
     const customerDataFinder = (data) =>
@@ -415,6 +428,34 @@ const CashOut = (props) =>
                         disabled={isLoading}
 					/>
 
+					{/* {fromCashbook && (
+						<SelectList
+							setSelected={(val) => {
+								if (val) {
+									const selectedCustomer = globalState.customers.find(c => 
+										c.id === val || c._id === val || c.customer?.id === val
+									);
+									if (selectedCustomer) {
+										const selectedId = 
+											selectedCustomer?.summary?.[0]?.cashbookId || 
+											selectedCustomer?._id || 
+											selectedCustomer?.id;
+										onChange(selectedId, "cashbookId");
+									}
+								}
+							}}
+							data={globalState.customers.map((item) => ({
+								key: item.id || item._id || item.customer?.id,
+								value: `${item.customer?.firstName || item.firstName || "Unknown"} ${item.customer?.lastName || item.lastName || ""}`,
+								details: `${item.customer?.phone || item.phone || "N/A"} - ${item.customer?.email || item.email || "N/A"}`,
+							}))}
+							save="key"
+							searchPlaceholder="Search Customer"
+							placeholder="Select Customer"
+							search={false}
+							keyboardShouldPersistTaps="handled"
+						/>
+					)} */}
                     {fromCashbook && (
                         <SelectList
                             setSelected={(val) => {

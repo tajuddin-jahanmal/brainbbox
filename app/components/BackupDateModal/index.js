@@ -1,7 +1,7 @@
-// import RNDateTimePicker from "@react-native-community/datetimepicker";
 import React, { useState } from "react";
-import { Modal, Text, TouchableOpacity, View } from "react-native";
+import { Modal, Platform, Text, TouchableOpacity, View } from "react-native";
 import DatePicker from "react-native-date-picker";
+import Colors from "../../constant";
 import language from "../../localization";
 import Button from "../Button";
 import Card from "../Card";
@@ -9,57 +9,79 @@ import Style from "./Style";
 
 const BackupDateModal = (props) =>
 {
-	const isRTL = language.isRtl;
+    const isRTL = language.isRtl;
 
     const initState = {
-		showDatePicker: { visible: false, type: "" },
-		from: "",
-		to: "",
-	};
-	const [ fields, setFields ] = useState(initState);
+        showDatePicker: { visible: false, type: "" },
+        from: "",
+        to: "",
+    };
+    const [fields, setFields] = useState(initState);
+    // const [selectedDate, setSelectedDate] = useState(new Date());
+    // const datePickerRef = useRef(null);
 
     const onChange = (value, type) =>
-	{
-		setFields(perv => ({
-			...perv,
-			[type]: value,
-		}));
-	};
+    {
+        setFields(perv => ({
+            ...perv,
+            [type]: value,
+        }));
+    };
+
+    const handleDatePress = (type) => {
+        // setSelectedDate(new Date());
+        onChange({ visible: true, type }, "showDatePicker");
+    };
+
+    // const handleIOSDateSelection = () => {
+    //     dateChanger({ type: "set" }, selectedDate);
+    //     setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
+    // };
 
     const dateChanger = (event, date) =>
-	{
-        // in react-native-picker we don't have event
-		// if (event.type === "dismissed")
-		// {
-		// 	setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
-		// 	return;
-		// }
+    {
+        // Always close the picker on iOS
+        // if (Platform.OS === 'ios') {
+        //     setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
+        // }
+
+        // if (event.type === "dismissed")
+        // {
+        //     setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
+        //     return;
+        // }
 
         let selectedDate = new Date(date);
+        const type = fields.showDatePicker.type;
 
-		if (fields.showDatePicker.type === "from")
-		{
-			if (fields.to)
-			{
-				if ((fields.to - selectedDate) <= -1)
-					return setFields(prev => ({ ...prev, from: "", to: "", showDatePicker: { visible: false, type: "" } }));
-			}
+        if (type === "from")
+        {
+            if (fields.to)
+            {
+                if ((fields.to - selectedDate) <= -1)
+                    return setFields(prev => ({ ...prev, from: "", to: "", showDatePicker: { visible: false, type: "" } }));
+            }
 
-			setFields(prev => ({ ...prev, from: selectedDate, to: fields.to, showDatePicker: { visible: false, type: "" } }));
-		} else {
+            setFields(prev => ({ ...prev, from: selectedDate, showDatePicker: { visible: false, type: "" } }));
+        } else {
             selectedDate.setHours(23, 59, 59, 999);
-			if ((fields.from - selectedDate) <= -1)
-				return setFields(prev => ({ ...prev, from: fields.from, to: selectedDate, showDatePicker: { visible: false, type: "" } }));
+            if (fields.from && (fields.from - selectedDate) <= -1)
+                return setFields(prev => ({ ...prev, to: selectedDate, showDatePicker: { visible: false, type: "" } }));
 
-			setFields(prev => ({ ...prev, from: fields.from, to: "", showDatePicker: { visible: false, type: "" } }));
-		}
-	}
+            setFields(prev => ({ ...prev, to: "", showDatePicker: { visible: false, type: "" } }));
+        }
+
+        // On Android, we need to explicitly hide the picker after selection
+        if (Platform.OS === 'android') {
+            setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
+        }
+    }
 
     const dateMaker = (date) =>
-	{
-		const newDate = new Date(date.toString());
-		return newDate.getFullYear() + "/" + Number.parseInt(newDate.getMonth()+1) + "/" + newDate.getDate()
-	}
+    {
+        const newDate = new Date(date.toString());
+        return newDate.getFullYear() + "/" + Number.parseInt(newDate.getMonth()+1) + "/" + newDate.getDate()
+    }
 
     const dismissHandler = () =>
     {
@@ -88,7 +110,7 @@ const BackupDateModal = (props) =>
                         <Text style={[Style.tranInfo, isRTL && {textAlign: "right"}]}>{language.PickdateToCreateYourAppBackup}</Text>
 
                         <View style={[Style.fromToContainer, isRTL && {flexDirection: 'row-reverse'}]}>
-                            {/* { fields.showDatePicker.visible && <z value={new Date()} onChange={(event, date) => dateChanger(event, date)} />  } */}
+                            {/* Android Date Picker */}
                             {fields.showDatePicker.visible && (
                                 <DatePicker
                                     modal
@@ -103,17 +125,47 @@ const BackupDateModal = (props) =>
                                     }}
                                 />
                             )}
+
                             <Card
                                 style={Style.fromTo}
-                                onPress={() => onChange({visible: true, type: "from"}, "showDatePicker")}>
+                                onPress={() => handleDatePress("from")}>
                                 <Text style={isRTL && {textAlign: "right"}}>{language.from}: {fields.from >= 1 && dateMaker(fields.from)}</Text>
                             </Card>
                             <Card
                                 style={Style.fromTo}
-                                onPress={() => (fields.from) && onChange({visible: true, type: "to"}, "showDatePicker")}>
+                                onPress={() => fields.from && handleDatePress("to")}>
                                 <Text style={isRTL && {textAlign: "right"}}>{language.to}: {fields.to >= 1 && dateMaker(fields.to)}</Text>
                             </Card>
                         </View>
+
+                        {/* iOS Date Picker Modal */}
+                        {/* <Modal
+                            visible={fields.showDatePicker.visible && Platform.OS === 'ios'}
+                            transparent={false}
+                            animationType="slide"
+                            onRequestClose={() => setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}))}
+                        >
+                            <View style={styles.iosDatePickerContainer}>
+                                <RNDateTimePicker 
+                                    ref={datePickerRef}
+                                    value={selectedDate}
+                                    onChange={dateChanger}
+                                    display="inline"
+                                    mode="date"
+                                    themeVariant="light"
+                                    style={styles.iosDatePicker}
+                                />
+                                <View style={styles.iosButtonContainer}>
+                                    <Button 
+                                        style={styles.iosDoneButton}
+                                        onPress={handleIOSDateSelection}
+                                    >
+                                        {language.done}
+                                    </Button>
+                                </View>
+                            </View>
+                        </Modal> */}
+
                         <Text style={[Style.storeBackupMsg, isRTL && {textAlign: "right"}]}>{language.yourAppBackupWillStore}</Text>
 
                         <View style={Style.buttonsContainer}>
@@ -127,6 +179,25 @@ const BackupDateModal = (props) =>
             </Modal>
         </View>
     )
+};
+
+const styles = {
+    iosDatePickerContainer: {
+        flex: 1,
+        backgroundColor: 'white',
+        padding: 20,
+    },
+    iosDatePicker: {
+        flex: 1,
+        backgroundColor: 'white',
+    },
+    iosButtonContainer: {
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+    },
+    iosDoneButton: {
+        backgroundColor: Colors.primary,
+    },
 };
 
 export default React.memo(BackupDateModal, (next, prev) => (

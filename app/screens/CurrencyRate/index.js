@@ -82,7 +82,7 @@ const CurrencyRate = (props) =>
 				const objData = await response.json();
 				if (objData.status === "success")
 				{
-					const filterData = objData.data.filter(rate => rate.province === fields.province.province);
+					const filterData = objData.data?.filter(rate => rate.province === fields.province.province);
 					onChange(ratesSorting(filterData), "data");
 					dispatch("setCurrencyRate", objData.data);
 					await AsyncStorage.setItem("@currencyRate", JSON.stringify(objData.data));
@@ -91,7 +91,7 @@ const CurrencyRate = (props) =>
 				setIsLoading(false);
 			} else {
 				const offlineCurrencyRate = JSON.parse(await AsyncStorage.getItem("@currencyRate"));
-				const filterData = offlineCurrencyRate.filter(rate => rate.province === fields.province.province);
+				const filterData = offlineCurrencyRate?.filter(rate => rate.province === fields.province.province);
 				onChange(ratesSorting(filterData), "data");
 				dispatch("setCurrencyRate", offlineCurrencyRate);
 			}

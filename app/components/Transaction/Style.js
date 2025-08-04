@@ -29,12 +29,14 @@ export default StyleSheet.create({
         paddingHorizontal: 10,
     },
     dateTime: {
-        fontSize: 10,
+        fontSize: 12,
         color: "rgba(0, 0, 0, 0.8)",
         padding: 10,
         textAlignVertical: "center",
+        textAlign: 'center',
         borderRadius: 8,
-        width: "36%",
+        // width: "36%",
+        width: "25%",
     },
     sameCode: {
         fontWeight: "bold",
@@ -42,13 +44,13 @@ export default StyleSheet.create({
         padding: 10,
         textAlignVertical: "center",
         borderRadius: 6,
-        width: "21.3%",
+        width: "25%",
         textAlign: "center",
         // color: Colors.textColor
         color: "rgba(0, 0, 0, 0.7)",
     },
-    width32: {
-        width: "32%",
+    width33: {
+        width: "33.3%",
     },
     cashIn: {
         // color: Colors.green,

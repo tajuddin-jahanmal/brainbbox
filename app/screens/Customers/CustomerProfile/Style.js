@@ -2,6 +2,23 @@ import { StyleSheet } from "react-native";
 import Colors from "../../../constant";
 
 export default StyleSheet.create({
+    iosDatePickerContainer: {
+        flex: 1,
+        backgroundColor: 'white',
+        padding: 20,
+    },
+    iosDatePicker: {
+        flex: 1,
+        backgroundColor: 'white',
+    },
+    iosButtonContainer: {
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+    },
+    iosDoneButton: {
+        backgroundColor: Colors.primary,
+    },
+
     container: {
         flex: 1,
         backgroundColor: "#f1f4f9",
@@ -59,12 +76,16 @@ export default StyleSheet.create({
     },
     dateTime: {
         fontWeight: "bold",
+        textAlign: "center",
+        width: "25%",
     },
     runningBalance: {
         fontWeight: "bold",
         fontSize: 12,
-        width: 50,
-        textAlign: 'center',
+        width: "25%",
+        textAlign: "center",
+        // width: 50,
+        // textAlign: 'center',
     },
     card: {
         // marginBottom: 10,

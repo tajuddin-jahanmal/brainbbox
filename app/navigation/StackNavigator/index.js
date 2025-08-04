@@ -1,5 +1,5 @@
 import { createStackNavigator } from "@react-navigation/stack";
-import React, { useContext } from "react";
+import { useContext } from "react";
 import { ExchangeMoneyContext } from "../../ExchangeMoneyContext";
 import CashIn from "../../screens/CashIn";
 import CashOut from "../../screens/CashOut";
@@ -7,6 +7,7 @@ import Currency from "../../screens/Currency";
 import CurrencyRate from "../../screens/CurrencyRate";
 import Customers from "../../screens/Customers";
 import CustomerProfile from "../../screens/Customers/CustomerProfile";
+import DeleteAccount from "../../screens/DeleteAccount";
 import Login from "../../screens/Login";
 import LoginWithFG from "../../screens/LoginWithFG";
 import OppositeTransactions from "../../screens/Opposite/OppositeTransactions";
@@ -40,6 +41,7 @@ const StackNavigator = () =>
 							<Stack.Screen name="Currency" component={Currency} />
 							<Stack.Screen name="CurrencyRate" component={CurrencyRate} />
 							<Stack.Screen name="Profile" component={Profile} />
+							<Stack.Screen name="DeleteAccount" component={DeleteAccount} />
 						</>
 						:
 						<>

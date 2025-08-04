@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Alert, Linking, View } from 'react-native';
 import VersionCheck from "react-native-version-check";
 import Constant from "../constant";
+
 import {
   clearCurrenciesTable,
   clearCustomersTable,
@@ -114,7 +115,7 @@ const ExchangeMoneyProvider = (props) =>
           if (hasSeenUpdate === null)
             await AsyncStorage.setItem("@hasSeenUpdate", JSON.stringify({version: currentVersion, seen: true}));
 
-          await checkAppNewUpdate();
+          checkAppNewUpdate();
         }
         
         const storedExpirationTime = await AsyncStorage.getItem('@guestExpirationTime');
@@ -359,13 +360,7 @@ const ExchangeMoneyProvider = (props) =>
                 text: language.updateNow,
                 onPress: async () => {
                   await AsyncStorage.setItem("@hasSeenUpdate", JSON.stringify({version: latestVersion, seen: true}));
-                  // Linking.openURL(await VersionCheck.getStoreUrl());
-                  const url = await VersionCheck.getStoreUrl();
-                  if (url) {
-                    Linking.openURL(url);
-                  } else {
-                    Alert.alert("Error", "Store link not available to check the app update.");
-                  }
+                  Linking.openURL(await VersionCheck.getStoreUrl());
                 },
               },
             ]

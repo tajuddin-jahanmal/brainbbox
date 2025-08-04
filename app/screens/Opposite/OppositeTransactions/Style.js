@@ -165,13 +165,17 @@ export default StyleSheet.create({
         fontWeight: "bold"
     },
     dateTime: {
-        fontWeight: "bold"
+        fontWeight: "bold",
+        textAlign: "center",
+        width: "25%",
     },
     runningBalance: {
         fontWeight: "bold",
         fontSize: 12,
-        width: 50,
-        textAlign: 'center',
+        width: "25%",
+        textAlign: "center",
+        // width: 50,
+        // textAlign: 'center',
     },
     card: {
         // marginBottom: 10,

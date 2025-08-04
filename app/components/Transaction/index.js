@@ -13,15 +13,15 @@ const Transaction = (props) =>
 		<Card {...props} style={Style.card}>
 			{/* <View style={Style[item.type ? "dateAmount Container" : "dateAmountContainer2"]}> */}
 			<View style={Style.testStyle}>
-				<Text style={Style.dateTime}>{(new Date(item?.dateTime))?.toLocaleString()}</Text>
+				<Text style={[Style.dateTime, !props.runningBalance && Style.width33]}>{(new Date(item?.dateTime))?.toLocaleDateString()}</Text>
 				<Text
 					numberOfLines={1}
-					style={[Style.sameCode, Style.cashOut, !props.runningBalance && Style.width32, {fontSize: GetResponsiveFontSize(item?.amount)}]}>
+					style={[Style.sameCode, Style.cashOut, !props.runningBalance && Style.width33, {fontSize: GetResponsiveFontSize(item?.amount)}]}>
 						{item?.type ? "" : item?.amount}
 				</Text>
 				<Text
 					numberOfLines={1}
-					style={[Style.sameCode, Style.cashIn, !props.runningBalance && Style.width32, {fontSize: GetResponsiveFontSize(item?.amount)}]}>
+					style={[Style.sameCode, Style.cashIn, !props.runningBalance && Style.width33, {fontSize: GetResponsiveFontSize(item?.amount)}]}>
 						{item?.type ? item?.amount : ""}
 				</Text>
 				{props.runningBalance && <Text

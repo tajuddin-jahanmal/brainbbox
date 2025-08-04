@@ -1,4 +1,3 @@
-// import RNDateTimePicker from "@react-native-community/datetimepicker";
 import { useIsFocused } from "@react-navigation/core";
 import * as FileSystem from 'expo-file-system';
 import { printToFileAsync } from 'expo-print';
@@ -30,48 +29,56 @@ import Style from "./Style";
 
 const CustomerProfile = (props) =>
 {
-	const isFocused = useIsFocused();
-	const initState = {
-		cashbookUser: {},
-		transications: [],
-		showTotalCashinOut: true,
-		showDatePicker: { visible: false, type: "" },
-		from: "",
-		to: "",
-		currentPage: 1,
-		totalDataLength: 0,
-		transactionModal: {visible: false, data: {}},
-		reminderModal: {visible: false, data: {}},
-	};
+    const isFocused = useIsFocused();
+    const initState = {
+        cashbookUser: {},
+        transications: [],
+        showTotalCashinOut: true,
+        showDatePicker: { visible: false, type: "" },
+        from: "",
+        to: "",
+        currentPage: 1,
+        totalDataLength: 0,
+        transactionModal: {visible: false, data: {}},
+        reminderModal: {visible: false, data: {}},
+    };
 
-	const [ globalState, dispatch ] = useStore();
-	const { customers } = globalState;
-	const { goBack, navigate } = props.navigation;
-	const { cashbookId, dailyTrans, fromCashbook } = props.route.params;
-	const [ dataProvider, setDataProvider ] = useState(new DataProvider((r1, r2) => r1 !== r2));
-	const [ fields, setFields ] = useState(initState);
-	const [ isLoading, setIsLoading ] = useState(false);
-	const context = useContext(ExchangeMoneyContext)
-	const [CashBook, setCashBook] =  useState({
-		customer: {},
-		cashIn:0,
-		cash: 0,
-		cashOut: 0,
-		profit: 0
-	});
-	const isRTL = language.isRtl;
-	const paginateDataLength = 15;
-	const lastIndex = fields.currentPage * paginateDataLength;
+    const [globalState, dispatch] = useStore();
+    const { customers } = globalState;
+    const { goBack, navigate } = props.navigation;
+    const { cashbookId, dailyTrans, fromCashbook } = props.route.params;
+    const [dataProvider, setDataProvider] = useState(new DataProvider((r1, r2) => r1 !== r2));
+    const [fields, setFields] = useState(initState);
+    const [isLoading, setIsLoading] = useState(false);
+    const context = useContext(ExchangeMoneyContext)
+    const [CashBook, setCashBook] =  useState({
+        customer: {},
+        cashIn:0,
+        cash: 0,
+        cashOut: 0,
+        profit: 0
+    });
+    const isRTL = language.isRtl;
+    const paginateDataLength = 15;
+    const lastIndex = fields.currentPage * paginateDataLength;
+    // const [selectedDate, setSelectedDate] = useState(new Date());
+    // const datePickerRef = useRef(null);
 
-	const onChange = (value, type) =>
-	{
-		setFields(perv => ({
-			...perv,
-			[type]: value,
-		}));
-	};
+    const onChange = (value, type) =>
+    {
+        setFields(perv => ({
+            ...perv,
+            [type]: value,
+        }));
+    };
 
-	const cashbookUser = customers?.find(customer => (customer?._id || customer?.id) === cashbookId);
+    const handleDatePress = (type) => {
+        // setSelectedDate(new Date());
+        onChange({ visible: true, type }, "showDatePicker");
+    };
+
+    const cashbookUser = customers?.find(customer => (customer?._id || customer?.id) === cashbookId);
+
 	// const cashbookUser = customers?.find(customer => customer?.id === cashbookId);
 	// customers?.find(customer => {
 	// 	console.log(customer._id);
@@ -490,33 +497,31 @@ const CustomerProfile = (props) =>
 		await shareAsync(newURI, { UTI: ".pdf", mimeType: "application/pdf" });
 	};
 
-	const dateChanger = (event, date) =>
-	{
-		// if (event.type === "dismissed")
-		// {
-		// 	setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
-		// 	return;
-		// }
-
+    const dateChanger = (event, date) => {
+        const type = fields.showDatePicker.type;
         let selectedDate = new Date(date);
+		// setSelectedDate(date); // ✅ Update selectedDate with the picked date
 
-		if (fields.showDatePicker.type === "from")
-		{
-			if (fields.to)
-			{
-				if ((fields.to - selectedDate) <= -1)
-					return setFields(prev => ({ ...prev, from: "", to: "", showDatePicker: { visible: false, type: "" } }));
-			}
+        if (type === "from") {
+            if (fields.to && (fields.to - selectedDate) <= -1) {
+                setFields(prev => ({ ...prev, from: "", to: "" }));
+            } else {
+                setFields(prev => ({ ...prev, from: selectedDate }));
+            }
+        } else {
+            selectedDate.setHours(23, 59, 59, 999);
+            if (fields.from && (fields.from - selectedDate) <= -1) {
+                setFields(prev => ({ ...prev, to: selectedDate }));
+            } else {
+                setFields(prev => ({ ...prev, to: "" }));
+            }
+        }
 
-			setFields(prev => ({ ...prev, from: selectedDate, to: fields.to, showDatePicker: { visible: false, type: "" } }));
-		} else {
-			selectedDate.setHours(23, 59, 59, 999);
-			if ((fields.from - selectedDate) <= -1)
-				return setFields(prev => ({ ...prev, from: fields.from, to: selectedDate, showDatePicker: { visible: false, type: "" } }));
-
-			setFields(prev => ({ ...prev, from: fields.from, to: "", showDatePicker: { visible: false, type: "" } }));
-		}
-	}
+        // On Android, we need to explicitly hide the picker after selection
+        // if (Platform.OS === 'android') {
+            setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
+        // }
+    };
 
 	const reminderHandler = () =>
 	{
@@ -602,16 +607,36 @@ const CustomerProfile = (props) =>
 	}
 
 	console.log("Rendering [customerProfile.js]", isFocused);
+// const handleIOSDateSelection = () => {
+//     // Use the current selected date and close the modal
+//     dateChanger({ type: "set" }, selectedDate);
+//     setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
+// };
 
 	return isFocused ? (
-		<View style={Style.container}>
-			<Header title={CashBook?.customer?.firstName +" "+ (CashBook?.customer?.lastName || "")} goBack={goBack} />
-			<View style={Style.content}>	
+        <View style={Style.container}>
+            <Header title={CashBook?.customer?.firstName +" "+ (CashBook?.customer?.lastName || "")} goBack={goBack} />
+            <View style={Style.content}>    
+                <View>
+                    {fromCashbook && <View style={[Style.fromToContainer, isRTL && {flexDirection: "row-reverse"}]}>
+                        <Card
+                            style={Style.fromTo}
+                            onPress={() => !context.isGuest && handleDatePress("from")}
+                        >
+                            <Text style={isRTL && {textAlign: 'right'}}>
+                                {language.from}: {fields.from >= 1 && dateMaker(fields.from)}
+                            </Text>
+                        </Card>
+                        <Card
+                            style={Style.fromTo}
+                            onPress={() => (!context.isGuest || fields.from) && handleDatePress("to")}
+                        >
+                            <Text style={isRTL && {textAlign: 'right'}}>
+                                {language.to}: {fields.to >= 1 && dateMaker(fields.to)}
+                            </Text>
+                        </Card>
 
-				<View>
-					{fromCashbook && <View style={[Style.fromToContainer, isRTL && {flexDirection: "row-reverse"}]}>
-						{/* { fields.showDatePicker.visible && <RNDateTimePicker value={new Date()} onChange={(event, date) => dateChanger(event, date)} />  } */}
-						{fields.showDatePicker.visible && (
+						{/* {fields.showDatePicker.visible && ( */}
 							<DatePicker
 								modal
 								mode="date"
@@ -624,20 +649,8 @@ const CustomerProfile = (props) =>
 									setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
 								}}
 							/>
-						)}
-						<Card
-							style={Style.fromTo}
-							onPress={() => !context.isGuest && onChange({visible: true, type: "from"}, "showDatePicker")}
-						>
-							<Text style={isRTL && {textAlign: 'right'}}>{language.from}: {fields.from >= 1 && dateMaker(fields.from)}</Text>
-						</Card>
-						<Card
-							style={Style.fromTo}
-							onPress={() => (!context.isGuest || fields.from) && onChange({visible: true, type: "to"}, "showDatePicker")}
-						>
-							<Text style={isRTL && {textAlign: 'right'}}>{language.to}: {fields.to >= 1 && dateMaker(fields.to)}</Text>
-						</Card>
-					</View>}
+						{/* )} */}
+                    </View>}
 
 					<View style={Style.shareShowContainer}>
 						{
@@ -685,8 +698,9 @@ const CustomerProfile = (props) =>
 				</View>
 
 				<Card style={Style.dateCashinOutContainer}>
-					<Text style={Style.dateTime}>{language.dateTime}</Text>
-					<Text style={{...Style.dateTime, ...Style.margin}}>{language.cashOut}</Text>
+					<Text style={Style.dateTime}>{language.date}</Text>
+					{/* <Text style={{...Style.dateTime, ...Style.margin}}>{language.cashOut}</Text> */}
+					<Text style={{...Style.dateTime, }}>{language.cashOut}</Text>
 					<Text style={Style.dateTime}>{language.cashIn}</Text>
 					<Text style={Style.runningBalance}>{language.runningBalance}</Text>
 				</Card>

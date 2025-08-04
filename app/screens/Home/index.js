@@ -4,14 +4,15 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/core";
-import React, { useContext, useEffect, useState } from "react";
+import { useNavigation } from "expo-router";
+import { useContext, useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import Button from "../../components/Button";
 import Card from "../../components/Card";
 import Header from "../../components/Header";
 import Slider from "../../components/Slider";
 import TokenModal from "../../components/TokenModal";
-import Colors from "../../constant";
+import Colors, { isAndroid } from "../../constant";
 import Currency from "../../DB/Currency";
 import Customers from "../../DB/Customer";
 import Queue from "../../DB/Queue";
@@ -31,7 +32,8 @@ const Home = (props) =>
 	const isFocused = useIsFocused()
 	const [isLoading, setIsLoading] = useState(false);
 	const [globalState, dispatch] = useStore();
-	const { navigate } = props.navigation;
+	const navigation = useNavigation();
+	const { navigate } = isAndroid ? props.navigation : navigation;
 	const [ tokenModalVisible, setTokenModalVisible ] = useState(false);
 	const context = useContext(ExchangeMoneyContext);
 	const [ offlineQueueLength, setOfflineQueueLength ] = useState(0);

@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/core";
 import React, { useContext, useEffect, useState } from "react";
-import { Alert, Text, ToastAndroid, View } from "react-native";
+import { Alert, Text, View } from "react-native";
 import Button from "../../components/Button";
 import Header from "../../components/Header";
 import Input from "../../components/Input";
@@ -18,6 +18,7 @@ import Style from "./Style";
 //     clearQueueTable,
 //     clearSelfCashTable,
 //     clearTransactionsTable } from "../../DB";
+import Toast from 'react-native-toast-message';
 import language from "../../localization";
 import useStore from "../../store/store";
 // import NetInfo from "@react-native-community/netinfo";
@@ -31,6 +32,16 @@ const Profile = (props) =>
         countryCode: "",
         phone: "",
         email: "",
+    };
+
+    const showToast = () => {
+        Toast.show({
+            type: 'success',
+            text1: language.success,
+            text2: language.profileSuccessfullyChanged,
+            swipeable: true,
+            visibilityTime: 2000,
+        });
     };
 
     const context = useContext(ExchangeMoneyContext);
@@ -97,7 +108,8 @@ const Profile = (props) =>
                 asyncstorageCustomer.firstName = fields.firstName;
                 asyncstorageCustomer.lastName = fields.lastName;
                 await AsyncStorage.setItem("@customer", JSON.stringify(asyncstorageCustomer));
-				ToastAndroid.show("Profile successfully changed", ToastAndroid.SHORT);
+                showToast();
+				// ToastAndroid.show("Profile successfully changed", ToastAndroid.SHORT);
             }
 
             if(objData.status === 'failure')

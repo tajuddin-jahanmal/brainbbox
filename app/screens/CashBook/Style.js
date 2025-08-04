@@ -67,7 +67,9 @@ export default StyleSheet.create({
         marginLeft: 30,
     },
     dateTime: {
-        fontWeight: "bold"
+        fontWeight: "bold",
+        width: "33.3%",
+        textAlign: "center",
     },
     card: {
         marginBottom: 10,

@@ -65,7 +65,7 @@ const SelfCash = (props) =>
 			const offlineSelfCash = await SelfCashDB.getSelfCash();
 			if (offlineSelfCash.length >= 1)
 			{
-				const filterData = (offlineSelfCash || []).filter(cash => cash.currencyId === context.currency?.id);
+				const filterData = (offlineSelfCash || [])?.filter(cash => cash.currencyId === context.currency?.id);
 				setDataProvider(dataProvider.cloneWithRows([...paginationFunction(SortData(filterData))]));
 				dispatch("setSelfCash", [...globalState.selfCash, ...filterData])
 				setIsLoading(false);

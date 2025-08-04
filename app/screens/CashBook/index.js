@@ -282,8 +282,9 @@ const CashBook = (props) =>
 				</View>
 
 				<Card style={Style.dateCashinOutContainer}>
-					<Text style={Style.dateTime}>{language.dateTime}</Text>
-					<Text style={{...Style.dateTime, ...Style.margin}}>{language.cashOut}</Text>
+					<Text style={Style.dateTime}>{language.date}</Text>
+					{/* <Text style={{...Style.dateTime, ...Style.margin}}>{language.cashOut}</Text> */}
+					<Text style={{...Style.dateTime}}>{language.cashOut}</Text>
 					<Text style={Style.dateTime}>{language.cashIn}</Text>
 				</Card>
 

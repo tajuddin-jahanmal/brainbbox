@@ -17,8 +17,24 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSContactsUsageDescription": "This app uses your contacts to add customers"
-      }
+        "NSContactsUsageDescription": "This app uses your contacts to add customers",
+        "NSUserTrackingUsageDescription": "deliverd personalized ads to you.",
+        "SKAdNetworkItems": [
+          {
+            "SKAdNetworkIdentifier": "v9wttpbfk9.skadnetwork"
+          },
+          {
+            "SKAdNetworkIdentifier": "n38lu8286q.skadnetwork"
+          },
+          {
+            "SKAdNetworkIdentifier": "v9wttpbfk9.skadnetwork"
+          },
+          {
+            "SKAdNetworkIdentifier": "n38lu8286q.skadnetwork"
+          }
+        ]
+      },
+      "bundleIdentifier": "com.mosaaghajahanmal.brainbbox"
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +45,9 @@
         "READ_CONTACTS",
         "WRITE_CONTACTS",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "com.google.android.gms.permission.AD_ID"
       ],
       "package": "com.mosaaghajahanmal.brainbbox"
     },
@@ -45,22 +63,17 @@
     "plugins": [
       [
         "react-native-fbsdk-next",
-      {
-        "appID": "432237432929189",
-        "clientToken": "ebec0b35090235f2bfe59863a41de44d",
-        "displayName": "Brainbbox",
-        "scheme": "fb432237432929189",
-        "advertiserIDCollectionEnabled": false,
-        "autoLogAppEventsEnabled": false,
-        "isAutoInitEnabled":true,
-        "iosUserTrackingPermission": "deliverd personalized ads to you."
-      }],
-      "expo-tracking-transparency",
+        {
+          "appID": "432237432929189",
+          "clientToken": "ebec0b35090235f2bfe59863a41de44d",
+          "displayName": "Brainbbox",
+          "scheme": "fb432237432929189",
+          "advertiserIDCollectionEnabled": false,
+          "autoLogAppEventsEnabled": false,
+          "isAutoInitEnabled": true,
+          "iosUserTrackingPermission": "deliverd personalized ads to you."
+        }
+      ]
     ]
   }
 }
-// Type                JKS
-// Key Alias           3cef24695b6335f048c539b09d9e714f
-// MD5 Fingerprint     7C:61:6A:09:93:1D:09:D9:19:48:C2:E0:B4:2E:05:9E
-// SHA1 Fingerprint    E2:88:C2:A1:B2:06:59:5C:98:2A:74:B2:8E:E2:87:EF:A8:B6:20:05
-// SHA256 Fingerprint  C5:0F:CE:B0:CA:14:75:18:66:3A:59:A5:9B:EA:ED:1B:18:AE:B9:2C:AF:B5:31:DB:26:8C:97:F3:1F:E0:D2:B1

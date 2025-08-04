@@ -1,7 +1,8 @@
-import { useIsFocused } from "@react-navigation/core";
-import React, { memo, useContext, useEffect, useState } from "react";
-import { Alert, StatusBar, ToastAndroid, View } from "react-native";
+import { useNavigation } from 'expo-router';
+import { memo, useContext, useEffect, useState } from "react";
+import { Alert, StatusBar, View } from "react-native";
 import { SelectList } from "react-native-dropdown-select-list";
+import Toast from "react-native-toast-message";
 import { CashInOutValidationAlert } from "../../components/Alerts";
 import Button from "../../components/Button";
 import Header from "../../components/Header";
@@ -23,10 +24,10 @@ import Style from "./Style";
 
 const CashIn = (props) =>
 {
-	const { goBack } = props.navigation;
+	const navigation = useNavigation();
+	const { goBack } = navigation;
 	const { type, dailyTrans, selfCash, cashbookId, fromCashbook } = props.route?.params;
 	const context = useContext(ExchangeMoneyContext);
-	const isFocused = useIsFocused()
 
 	const initState = {
 			// amount: JSON.stringify(Math.floor(Math.random() * 100)),
@@ -38,6 +39,16 @@ const CashIn = (props) =>
 			type: true,
 			showAlert: { visible: false, message: "" },
 			currenciesData: [],
+	};
+
+	const showToast = () => {
+		Toast.show({
+			type: 'success',
+			text1: language.success,
+			text2: language.CashInSuccessfullyAdded,
+			swipeable: true,
+			visibilityTime: 2000,
+		});
 	};
 
 	const [ globalState, dispatch ] = useStore(false);
@@ -196,7 +207,8 @@ const CashIn = (props) =>
 			
 			// setFields(initState);
 			goBack();
-			ToastAndroid.show(language.CashInSuccessfullyAdded, ToastAndroid.SHORT);
+			// ToastAndroid.show(language.CashInSuccessfullyAdded, ToastAndroid.SHORT);
+			showToast();
 			return;
 		}
 
@@ -333,7 +345,8 @@ const CashIn = (props) =>
 
 
 		goBack();
-		ToastAndroid.show(language.CashInSuccessfullyAdded, ToastAndroid.SHORT);
+		// ToastAndroid.show(language.CashInSuccessfullyAdded, ToastAndroid.SHORT);
+		showToast();
 	}
 
 	const customerDataFinder = (data) =>
@@ -368,6 +381,34 @@ const CashIn = (props) =>
 						keyboardShouldPersistTaps="handled"
 					/>
 
+					{/* {fromCashbook && (
+						<SelectList
+							setSelected={(val) => {
+								if (val) {
+									const selectedCustomer = globalState.customers.find(c => 
+										c.id === val || c._id === val || c.customer?.id === val
+									);
+									if (selectedCustomer) {
+										const selectedId = 
+											selectedCustomer?.summary?.[0]?.cashbookId || 
+											selectedCustomer?._id || 
+											selectedCustomer?.id;
+										onChange(selectedId, "cashbookId");
+									}
+								}
+							}}
+							data={globalState.customers.map((item) => ({
+								key: item.id || item._id || item.customer?.id,
+								value: `${item.customer?.firstName || item.firstName || "Unknown"} ${item.customer?.lastName || item.lastName || ""}`,
+								details: `${item.customer?.phone || item.phone || "N/A"} - ${item.customer?.email || item.email || "N/A"}`,
+							}))}
+							save="key"
+							searchPlaceholder="Search Customer"
+							placeholder="Select Customer"
+							search={false}
+							keyboardShouldPersistTaps="handled"
+						/>
+					)} */}
 					{fromCashbook && (
 						<SelectList
 							setSelected={(val) => {
@@ -399,6 +440,7 @@ const CashIn = (props) =>
 					<Input placeholder={language.information} value={fields.information} onChangeText={(text) => onChange(text, "information")} type="textarea" disabled={isLoading} />
 
 					<Button style={Style.submit} onPress={submitHandler} isLoading={isLoading} disabled={isLoading}>{language.submit}</Button>
+
 				</View>
 			</View>
 

@@ -5,13 +5,10 @@ import { fetch as NetFetch } from "@react-native-community/netinfo";
 import * as AuthSession from 'expo-auth-session';
 import * as Facebook from 'expo-auth-session/providers/facebook';
 import * as Google from 'expo-auth-session/providers/google';
-import { requestTrackingPermissionsAsync } from "expo-tracking-transparency";
+// import { requestTrackingPermissionsAsync } from "expo-tracking-transparency";
 import * as WebBrowser from 'expo-web-browser';
-import React, { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Alert, Linking, Text, TouchableOpacity, View } from "react-native";
-import {
-  Settings
-} from "react-native-fbsdk-next";
 import LinearGradient from 'react-native-linear-gradient';
 import Button from "../../components/Button";
 import UpScreenLoader from "../../components/UpScreenLoader";
@@ -23,73 +20,65 @@ import { generateNumericId } from "../../utils/idGenerator";
 import serverPath from "../../utils/serverPath";
 import Style from "./Style";
 
-
-
-
 WebBrowser.maybeCompleteAuthSession();
 
-const LoginWithFG = (props) =>
-{
-	// const { navigate } = props.navigation;
-	const [globalState, dispatch] = useStore();
-	const context = useContext(ExchangeMoneyContext);
+const LoginWithFG = (props) => {
+  const [globalState, dispatch] = useStore();
+  const context = useContext(ExchangeMoneyContext);
   const [token, setToken] = useState("");
-	const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Configure Google Auth
   const redirectUri = AuthSession.makeRedirectUri({
-    // native: 'com.mosaaghajahanmal.brainbbox:/LoginWithFG/index.js',
-    useProxy: false,
+    useProxy: true, // Recommended for development
+    // native: 'com.your.app:/oauthredirect' // Replace with your bundle ID
   });
-	const [request, response, promptAsync] = Google.useAuthRequest({
-		androidClientId: '504215588437-3nkmfpds107445d47mq408lnjsuhco6h.apps.googleusercontent.com',
-    redirectUri: redirectUri
-    // redirectUri: AuthSession.makeRedirectUri({ useProxy: true })
-	});
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: '504215588437-3nkmfpds107445d47mq408lnjsuhco6h.apps.googleusercontent.com',
+    iosClientId: '504215588437-vc7um5bcsa2q8775h3dmshvhnpljgevb.apps.googleusercontent.com', // REPLACE WITH YOUR IOS CLIENT ID
+    webClientId: '504215588437-3ce7ijkdkljv2lcdnbemgu53b0o3q32j.apps.googleusercontent.com', // Optional but recommended
+    redirectUri,
+  });
+
   const [fbRequest, fbResponse, fbPromptAsync] = Facebook.useAuthRequest({
     clientId: "361987559839890",
-  })
+  });
 
-  useEffect(() => {
-    const requestTracking = async () => {
-      const { status } = await requestTrackingPermissionsAsync();
-
-      Settings.initializeSDK();
-
-      if (status === "granted") {
-        await Settings.setAdvertiserTrackingEnabled(true);
-      }
-    };
-
-    requestTracking();
-  }, []);
+  // useEffect(() => {
+  //   const requestTracking = async () => {
+  //     const { status } = await requestTrackingPermissionsAsync();
+  //     Settings.initializeSDK();
+  //     if (status === "granted") {
+  //       await Settings.setAdvertiserTrackingEnabled(true);
+  //     }
+  //   };
+  //   requestTracking();
+  // }, []);
   
   useEffect(() => {
     handleEffect();
-    
   }, [response, token]);
 
   useEffect(() => {
-    if (fbResponse && fbResponse?.type === "success" && fbResponse.authentication) {
-      (async () =>
-      {
+    if (fbResponse?.type === "success" && fbResponse.authentication) {
+      (async () => {
         const userInfoResponse = await fetch(
-          `https://graph.facebook.com/me?access_token=${fbResponse.authentication.accessToken}&fields=id,name`
+          `https://graph.facebook.com/me?access_token=${fbResponse.authentication.accessToken}&fields=id,name,email,picture`
         );
         const userInfo = await userInfoResponse.json();
-        console.log(userInfo, "userInfo");
+        console.log(userInfo, "Facebook userInfo");
       })();
     }
   }, [fbResponse]);
 
-  const handlePressAsync = async () =>
-  {
+  const handleFacebookLogin = async () => {
     const result = await fbPromptAsync();
     if (result.type !== "success") {
-      alert("Uh oh, something went wrong");
+      Alert.alert("Error", "Facebook login failed");
       return;
     }
-    
-  }
-
+  };
 
   async function handleEffect() {
     NetFetch().then(async (state) => {
@@ -97,82 +86,92 @@ const LoginWithFG = (props) =>
     });
   }
 
-  async function checkingUser (state) {
+  async function checkingUser(state) {
     const user = await getLocalUser();
     const isGuestExist = await AsyncStorage.getItem("@guestExpirationTime");
     const isCustomerExist = await AsyncStorage.getItem("@customer");
     
-    if (isGuestExist)
-    {
+    if (isGuestExist) {
       setIsLoading(true);
       const guestData = await AsyncStorage.getItem("@guest");
       let currencies = [{code: "؋", id: 1, name: "afghani"}];
-      context.setState(prev => ({...prev, customer: JSON.parse(guestData), isGuest: true, login: true, currency: currencies[0]}));
+      context.setState(prev => ({
+        ...prev, 
+        customer: JSON.parse(guestData), 
+        isGuest: true, 
+        login: true, 
+        currency: currencies[0]
+      }));
       dispatch('setCurrencies', currencies);
       return;
     }
 
-    if (isCustomerExist && state.isConnected)
-    {
+    if (isCustomerExist && state.isConnected) {
       const customerToJson = JSON.parse(isCustomerExist);
       const regex = /^07/;
-      if (regex.test(customerToJson.phone) && !customerToJson.countryCode)
-      {
+      if (regex.test(customerToJson.phone) && !customerToJson.countryCode) {
         Alert.alert("Info!", "You Need to Login Again!", [{
-          "text": "Ok", onPress: () => {updateCustomerAutomatically(customerToJson, user)},
+          "text": "Ok", 
+          onPress: () => updateCustomerAutomatically(customerToJson, user),
         }]);
         return;
       }
     }
 
-    if (!state.isConnected && user)
-    {
-      if (isCustomerExist)
-        context.setState(prev => ({...prev, user, customer: JSON.parse(isCustomerExist), login: true, isConnected: state.isConnected}));
-      else
+    if (!state.isConnected && user) {
+      if (isCustomerExist) {
+        context.setState(prev => ({
+          ...prev, 
+          user, 
+          customer: JSON.parse(isCustomerExist), 
+          login: true, 
+          isConnected: state.isConnected
+        }));
+      } else {
         context.setState(prev => ({...prev, user, login: true}));
+      }
       return;
     };
 
     if (!user) {
       if (response?.type === "success") {
-        // setToken(response.authentication.accessToken);
         getUserInfo(response.authentication.accessToken);
       }
     } else {
-      const customer = await getCustomer(user.id, user)
-      context.setState(prev => ({...prev, user, customer, login: true}))
-      if (!isCustomerExist || isCustomerExist === null)
+      const customer = await getCustomer(user.id, user);
+      context.setState(prev => ({...prev, user, customer, login: true}));
+      if (!isCustomerExist || isCustomerExist === null) {
         await AsyncStorage.setItem("@customer", JSON.stringify(customer));
-
-      console.log("loaded locally");
+      }
     }
   }
 
-  const updateCustomerAutomatically = async (customer, user) =>
-  {
+  const updateCustomerAutomatically = async (customer, user) => {
     const response = await fetch(serverPath('/customer'), {
       method: "PUT",
       headers: {
-          "Content-Type": "Application/JSON",
+        "Content-Type": "Application/JSON",
       },
-      body: JSON.stringify({firstName: customer?.firstName, lastName: customer?.lastName, countryCode: "+93", phone: customer?.phone.replace(/^0/, ''), email: customer?.email, providerId: user.id, id: customer?.id})
+      body: JSON.stringify({
+        firstName: customer?.firstName, 
+        lastName: customer?.lastName, 
+        countryCode: "+93", 
+        phone: customer?.phone.replace(/^0/, ''), 
+        email: customer?.email, 
+        providerId: user.id, 
+        id: customer?.id
+      })
     });
 
     const objData = await response.json();
-    if(objData.status === 'success')
-    {
+    if (objData.status === 'success') {
       context.logoutHandler();
-      // context.setState(prev => ({...prev, customer: {...context.customer, ...objData.date}}))
-      // await AsyncStorage.setItem("@customer", JSON.stringify(customer));
     }
-  }
+  };
 
   const getLocalUser = async () => {
-    // await AsyncStorage.removeItem("@user");
     const data = await AsyncStorage.getItem("@user");
-    if (!data) return null;
-    return JSON.parse(data);
+    return data ? JSON.parse(data) : null;
   };
 
   const getUserInfo = async (token) => {
@@ -181,21 +180,20 @@ const LoginWithFG = (props) =>
       setIsLoading(true);
       const response = await fetch(
         "https://www.googleapis.com/userinfo/v2/me",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const user = await response.json();
-      user.provider = "google"
-      const customer = await getCustomer(user.id, user)
-			context.setState(prev => ({...prev, user, customer, login: true}));
+      user.provider = "google";
+      const customer = await getCustomer(user.id, user);
+      context.setState(prev => ({...prev, user, customer, login: true}));
       await AsyncStorage.setItem("@user", JSON.stringify(user));
-      if (customer)
+      if (customer) {
         await AsyncStorage.setItem("@customer", JSON.stringify(customer));
-      // setUserInfo(user);
+      }
     } catch (error) {
-      // Add your own error handler here
+      Alert.alert("Error", "Failed to get user info");
+      setIsLoading(false);
     }
   };
 
@@ -204,74 +202,71 @@ const LoginWithFG = (props) =>
     try {
       const userResponse = await fetch(serverPath("/user/findorcreate"), {
         method: "POST",
-        headers: {
-          "Content-Type": "Application/JSON"
-        },
-        body: JSON.stringify({providerId, provider: user.provider, id: providerId, displayName: user?.name, email: user?.email, image: user?.picture})
+        headers: { "Content-Type": "Application/JSON" },
+        body: JSON.stringify({
+          providerId, 
+          provider: user.provider, 
+          id: providerId, 
+          displayName: user?.name, 
+          email: user?.email, 
+          image: user?.picture
+        })
       });
+      
       const userObjData = await userResponse.json();
-      // console.log(userObjData, "userObjData");
-      if(userObjData.status === 'failure')
-      {
+      if (userObjData.status === 'failure') {
         Alert.alert("Info!", userObjData.message);
         return null;
       }
-      if(userObjData.status === 'success')
-      {
+      
+      if (userObjData.status === 'success') {
         const response = await fetch(serverPath("/get/customer_by_auth"), {
           method: "POST",
-          headers: {
-            "Content-Type": "Application/JSON"
-          },
+          headers: { "Content-Type": "Application/JSON" },
           body: JSON.stringify({providerId})
         });
+        
         const objData = await response.json();
-        // console.log(objData, "objData Customer");
-        if(objData.status === 'failure')
-        {
+        if (objData.status === 'failure') {
           Alert.alert("Info!", objData.message);
           return null;
         }
-        if(objData.status === 'success')
-        {
+        
+        if (objData.status === 'success') {
           const currencyResponse = await fetch(serverPath("/get/currency"), {
             method: "POST",
-            headers: {
-              "Content-Type": "Application/JSON"
-            },
+            headers: { "Content-Type": "Application/JSON" },
             body: JSON.stringify({providerId})
           });
+          
           const currency = await currencyResponse.json();
-          if(currency.status === 'failure')
-          {
-            console.log("CURRENCY ERROR");
+          if (currency.status === 'failure') {
             Alert.alert("Info!", currency.message);
             return null;
           }
-          if(currency.status === 'success')
-          {
+          
+          if (currency.status === 'success') {
             context.setState(prev => ({...prev, currency: currency?.data[0]}));
-            dispatch('setCurrencies', currency.data)
+            dispatch('setCurrencies', currency.data);
             return objData.data;
           }
-          
         }
       }
-
     } catch (error) {
-        console.log("catch", "Error Code: 1", error);
-        if (error.message === "Network request failed") {
-          checkingUser({isConnected: false});
-          return;
-        };
-        Alert.alert("Info!", error.message + " Error Code: 1");
-        return null;
+      console.log("Error:", error);
+      if (error.message === "Network request failed") {
+        checkingUser({isConnected: false});
+        return;
+      }
+      Alert.alert("Error", "Failed to get customer data");
+      return null;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const guestHandler = async () =>
-  {
-    const expirationTime = Date.now() + (24 * 60 * 60 * 1000); // Current time + 24 hours
+  const guestHandler = async () => {
+    const expirationTime = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
     await AsyncStorage.setItem('@guestExpirationTime', expirationTime.toString());
     let guestCustomer = {
       id: generateNumericId(),
@@ -282,85 +277,79 @@ const LoginWithFG = (props) =>
       email: "guest@brainbbox.com",
       active: true,
       userId: null,
-    }
+    };
     await AsyncStorage.setItem("@guest", JSON.stringify(guestCustomer));
-    context.setState(prev => ({...prev, customer: guestCustomer, isGuest: true, login: true}));
-
+    
     let currencies = [{code: "؋", id: 1, name: "afghani"}];
-    context.setState(prev => ({...prev, currency: currencies[0]}));
-    dispatch('setCurrencies', currencies)
+    context.setState(prev => ({
+      ...prev, 
+      customer: guestCustomer, 
+      isGuest: true, 
+      login: true,
+      currency: currencies[0]
+    }));
+    dispatch('setCurrencies', currencies);
   };
 
+  const privacyHandler = async () => {
+    const url = "https://sites.google.com/view/brainbbox-privacy-policy/home/";
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Error", "Couldn't open the privacy policy page");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to open privacy policy");
+    }
+  };
 
-  const privacyHandler = async () =>
-  {
-    const isSupported = await Linking.canOpenURL("https://sites.google.com/view/brainbbox-privacy-policy/home/");
-    if (isSupported)
-      await Linking.openURL("https://sites.google.com/view/brainbbox-privacy-policy/home/");
-    else 
-      Alert.alert("Info!", "`Don't know how to open this URL: https://sites.google.com/view/brainbbox-privacy-policy/home`")
-  }
+  return (
+    <View style={Style.container}>
+      {!isLoading ? (
+        <LinearGradient
+          colors={['#f00029', '#ffd7d7', '#ffffff']}
+          style={Style.linearGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={Style.content}>
+            <View style={Style.circle} />
+            <View style={[Style.circle, Style.circle2]} />
 
-	return (
-		<View style={{...Style.container,}}>
-        { !isLoading &&
-          <LinearGradient
-            colors={['#f00029', '#ffd7d7', '#ffffff']}
-            style={Style.linearGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={Style.content}>
-
-              <View style={Style.circle} />
-              <View style={[Style.circle, Style.circle2]} />
-
-              <Text style={Style.welcomeTxt}>{language.welcomeToBrainbbox}</Text>
-              <View style={Style.buttonsContainer}>
-                <View>
-                  <Button style={Style.button} onPress={guestHandler} disabled={!request} icon={<Ionicons name="person-sharp" size={18} color={Colors.white} />}>{language.loginWithGuest}</Button>
-                  <Button style={Style.button} onPress={() => {
-                      promptAsync();
-                  }} disabled={!request} icon={<AntDesign name="google" size={18} color={Colors.white} />}>{language.loginWithGoogle}</Button>
-                  
-                  {/* <Button style={Style.button} onPress={() => {
-                    // handlePressAsync();
-                  }} disabled={!fbRequest} icon={<FontAwesome name="facebook" size={18} color={Colors.white} />} >Login With Facebook</Button> */}
-                  {/* <View style={Style.fbContainer}>
-                    <LoginButton
-                      style={Style.FBbutton}
-                      onLogoutFinished={() => console.log("Logged out")}
-                      onLoginFinished={(error, data) => {
-                        console.log("LOGIN FINISHED")
-                        AccessToken.getCurrentAccessToken().then((data) => {
-                          const infoRequest = new GraphRequest("/me", null, (error, result) => {
-                            console.log(error || result);
-                          });
-                          if(data)
-                            new GraphRequestManager().addRequest(infoRequest).start();
-                        });
-                      }}
-                    />
-                  </View> */}
-                  {/* }} disabled={!request} icon={<FontAwesome name="facebook" size={18} color={Colors.white} />} >Login With Facebook</Button> */}
-                  <TouchableOpacity onPress={privacyHandler}>
-                    <Text style={Style.privacy}>{language.privacyPolicy}</Text>
-                  </TouchableOpacity>
-                </View>
+            <Text style={Style.welcomeTxt}>{language.welcomeToBrainbbox}</Text>
+            <View style={Style.buttonsContainer}>
+              <View>
+                <Button 
+                  style={Style.button} 
+                  onPress={guestHandler} 
+                  icon={<Ionicons name="person-sharp" size={18} color={Colors.white} />}
+                >
+                  {language.loginWithGuest}
+                </Button>
+                
+                <Button 
+                  style={Style.button} 
+                  onPress={() => promptAsync()} 
+                  disabled={!request}
+                  icon={<AntDesign name="google" size={18} color={Colors.white} />}
+                >
+                  {language.loginWithGoogle}
+                </Button>
+                
+                <TouchableOpacity onPress={privacyHandler}>
+                  <Text style={Style.privacy}>{language.privacyPolicy}</Text>
+                </TouchableOpacity>
               </View>
             </View>
+          </View>
         </LinearGradient>
-      }
-
-
-      {
-				isLoading &&
+      ) : (
         <UpScreenLoader />
-			}
-		</View>
-	)
+      )}
+    </View>
+  );
 };
 
 export default LoginWithFG;
-
-//ANDROID 504215588437-3nkmfpds107445d47mq408lnjsuhco6h.apps.googleusercontent.com
