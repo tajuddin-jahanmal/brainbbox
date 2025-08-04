@@ -11,28 +11,11 @@
       "resizeMode": "contain",
       "backgroundColor": "#fe0000"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSContactsUsageDescription": "This app uses your contacts to add customers",
-        "NSUserTrackingUsageDescription": "deliverd personalized ads to you.",
-        "SKAdNetworkItems": [
-          {
-            "SKAdNetworkIdentifier": "v9wttpbfk9.skadnetwork"
-          },
-          {
-            "SKAdNetworkIdentifier": "n38lu8286q.skadnetwork"
-          },
-          {
-            "SKAdNetworkIdentifier": "v9wttpbfk9.skadnetwork"
-          },
-          {
-            "SKAdNetworkIdentifier": "n38lu8286q.skadnetwork"
-          }
-        ]
+        "NSContactsUsageDescription": "This app uses your contacts to add customers"
       },
       "bundleIdentifier": "com.mosaaghajahanmal.brainbbox"
     },
@@ -46,8 +29,7 @@
         "WRITE_CONTACTS",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "android.permission.INTERNET",
-        "com.google.android.gms.permission.AD_ID"
+        "android.permission.INTERNET"
       ],
       "package": "com.mosaaghajahanmal.brainbbox"
     },
@@ -70,8 +52,7 @@
           "scheme": "fb432237432929189",
           "advertiserIDCollectionEnabled": false,
           "autoLogAppEventsEnabled": false,
-          "isAutoInitEnabled": true,
-          "iosUserTrackingPermission": "deliverd personalized ads to you."
+          "isAutoInitEnabled": true
         }
       ]
     ]

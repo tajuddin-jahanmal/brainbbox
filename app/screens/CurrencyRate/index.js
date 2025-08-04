@@ -105,7 +105,7 @@ const CurrencyRate = (props) =>
 			if (globalState.currencyRate.length >= 1)
 			{
 				setIsLoading(true);
-				const filterData = globalState.currencyRate.filter(rate => rate.province === fields.province.province);
+				const filterData = globalState.currencyRate?.filter(rate => rate.province === fields.province.province);
 				setFields(prev => ({ ...prev, data: ratesSorting(filterData)}));
 
 				switch (fields.province.province) {
