@@ -313,9 +313,7 @@ const ExchangeMoneyProvider = (props) =>
 
     const logoutHandler = async () =>
     {
-        NetInfo.addEventListener(stat => {
-          setState({...initState, isConnected: stat.isConnected});
-        });
+
 
         await AsyncStorage.removeItem("@user");
         await AsyncStorage.removeItem("@customer");
@@ -324,12 +322,9 @@ const ExchangeMoneyProvider = (props) =>
         await AsyncStorage.removeItem('@language');
         await AsyncStorage.removeItem('@appLock');
         await AsyncStorage.removeItem('@hasSeenUpdate');
-        await AsyncStorage.removeItem('@appLock');
         await AsyncStorage.removeItem('@appSliders');
         await AsyncStorage.removeItem('@currencyRate');
         await AsyncStorage.setItem("isFirstTime", JSON.stringify({isFirstTime: true}));
-        dispatch("clearStore", []);
-        dispatch("setCustomers", []);
         clearCustomersTable();
         clearOppositeCustomersTable();
         clearQueueTable();
@@ -338,6 +333,11 @@ const ExchangeMoneyProvider = (props) =>
         clearOppoTransactionsTable();
         clearSelfCashTable();
         clearCurrenciesTable();
+        dispatch("clearStore", []);
+        dispatch("setCustomers", []);
+        NetInfo.addEventListener(stat => {
+          setState({...initState, isConnected: stat.isConnected});
+        });
     };
 
     const checkAppUpdate = async () => {

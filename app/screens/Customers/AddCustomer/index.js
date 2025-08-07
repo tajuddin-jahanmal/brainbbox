@@ -74,8 +74,8 @@ const AddCustomer = (props) => {
 
           if (data.length >= 1) {
             let filterContacts = data
-              .filter(per => per.phoneNumbers && per.phoneNumbers.length > 0)
-              .map(per => ({
+              ?.filter(per => per.phoneNumbers && per.phoneNumbers.length > 0)
+              ?.map(per => ({
                 firstName: per.firstName || "",
                 lastName: per.lastName || "",
                 phone: per.phoneNumbers[0].number

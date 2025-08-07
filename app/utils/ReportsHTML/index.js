@@ -189,7 +189,7 @@ export const customerReportHTML = (ownerFullName, data, currencyCode, forCountin
 							</tr>
 						</thead>
 						<tbody>
-							${(data.map((value, index) => (
+							${(data?.map((value, index) => (
 								`<tr>
 									<td>${index + 1}</td>
 									<td class="cashOutTd">${!value.type ? value.amount : ""}</td>
@@ -395,7 +395,7 @@ export const dailyReportHTML = (ownerFullName, data, currencyCode, sumCashs, dat
 							</tr>
 						</thead>
 						<tbody>
-							${(data.map((value, index) => (
+							${(data?.map((value, index) => (
 								`<tr>
 									<td>${index + 1}</td>
 									<td>${value?.customer?.customer?.firstName || value?.customer?.firstName} ${value?.customer?.customer?.lastName || value?.customer?.lastName || ""}</td>
@@ -593,7 +593,7 @@ export const balanceSheetReportHTML = (ownerFullName, data, currencyCode, sum) =
 							</tr>
 						</thead>
 						<tbody>
-							${(data.map((value, index) => (
+							${(data?.map((value, index) => (
 								`<tr>
 									<td>${index + 1}</td>
 									<td>${value?.customer?.customer?.firstName || value?.customer?.firstName} ${value?.customer?.customer?.lastName || value?.customer?.lastName || ""}</td>

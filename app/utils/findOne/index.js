@@ -1,1 +1,1 @@
-export default (data, id) => data.find(per => per?.id == id);
+export default (data, id) => data?.find(per => per?.id == id);

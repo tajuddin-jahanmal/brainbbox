@@ -83,6 +83,7 @@ const kamil = () =>
             currencyRate: [],
             contacts: [],
             sliders: [],
+            oppositeTransactions: []
         }
     }
     return initState({

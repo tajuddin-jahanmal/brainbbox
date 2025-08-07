@@ -22,7 +22,7 @@ const Slider = (props) =>
                     activeDotStyle={{ width: 0, height: 0 }}
                     containerStyle={{ maxHeight: 200 }}
                 >
-                    {globalState.sliders.map((image, index) => (
+                    {globalState?.sliders?.map((image, index) => (
                         <View style={Style.slider} key={image.id}>
                             <Image
                                 source={{ uri: mainServerPath(image.imagePath) }}

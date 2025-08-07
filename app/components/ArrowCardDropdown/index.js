@@ -57,7 +57,7 @@ const ArrowCardDropdown = (props) =>
 				{props?.content?.length >= 1 && <Entypo style={fields.show && Style.chevron} name="chevron-small-right" size={24} color={Colors.textColor} />}
 			</TouchableOpacity>
 			{
-				(props.content && fields.show) && props.content.map((value, index) => (
+				(props.content && fields.show) && props.content?.map((value, index) => (
 					<Card key={index} style={Style.contentContainer}>
 						<Card style={Style.content} onPress={() => content_handler(value.key)}>
 							<Text>{value.value}</Text>

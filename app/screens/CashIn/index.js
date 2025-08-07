@@ -419,7 +419,7 @@ const CashIn = (props) =>
 									onChange(selectedId, "cashbookId");
 								}
 							}}
-							data={globalState.customers.map((item) => ({
+							data={globalState?.customers?.map((item) => ({
 								// value: item.customer?.firstName || "Unknown Customer",
 								// details: `${item.customer?.phone || "N/A"} - ${item.customer?.email || "N/A"}`,
 								key: item.id || item.customer?.id,

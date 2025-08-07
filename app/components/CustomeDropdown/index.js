@@ -59,7 +59,7 @@ const CustomeDropdown = (props) =>
                     globalState.currencies.length >= 1 ?
                     <TouchableOpacity>
                         {
-                            globalState.currencies?.map((value, index) => (
+                            globalState?.currencies?.map((value, index) => (
                                 <TouchableOpacity key={index} style={Style.contentCard} onPress={() => currencyHandler(value)}>
                                     <Text>{value.code}</Text>
                                 </TouchableOpacity>
