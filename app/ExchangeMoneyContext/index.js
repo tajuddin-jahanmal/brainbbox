@@ -338,6 +338,9 @@ const ExchangeMoneyProvider = (props) =>
         NetInfo.addEventListener(stat => {
           setState({...initState, isConnected: stat.isConnected});
         });
+
+        // if (isAndroid)
+        //   BackHandler.exitApp();
     };
 
     const checkAppUpdate = async () => {

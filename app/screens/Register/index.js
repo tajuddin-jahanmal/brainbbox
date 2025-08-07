@@ -18,7 +18,7 @@ const Register = (props) =>
     const context = useContext(ExchangeMoneyContext);
     const isFocused = useIsFocused();
     const initState = {
-        firstName: "",
+        firstName: context.user.name || "",
         lastName: "",
 		countryCode: "+93",
         phone: "",
@@ -29,7 +29,7 @@ const Register = (props) =>
 
     const [ fields, setFields ] = useState(initState);
     const [ isLoading, setIsLoading ] = useState(false);
-
+    
     const onChange = (value, type) =>
     {
         setFields(prev => ({
@@ -95,15 +95,18 @@ const Register = (props) =>
             <Header title={language.register} noBack />
             <View style={Style.content}>
                 <View style={Style.form}>
-                    <Input placeholder={language.firstName} value={fields.firstName} onChangeText={(text) => onChange(text, "firstName")}  disabled={isLoading}/>
-                    <Input placeholder={language.lastName} value={fields.lastName} onChangeText={(text) => onChange(text, "lastName")}  disabled={isLoading}/>
+                    {
+                        !context?.user?.name &&
+                        <Input placeholder={language.firstName} value={fields.firstName} onChangeText={(text) => onChange(text, "firstName")}  disabled={isLoading}/>
+                    }
+                    {/* <Input placeholder={language.lastName} value={fields.lastName} onChangeText={(text) => onChange(text, "lastName")}  disabled={isLoading}/> */}
                     <View style={Style.phoneContainer}>
                         <Card style={Style.countryCard} onPress={() => onChange(true, "showCountryCode")}>
                             <Text>{fields.countryCode}</Text>
                         </Card>
-                        <Input placeholder={language.phone} value={fields.phone} onChangeText={(text) => onChange(text.replace(/[^0-9]/g, ''), "phone")} keyboardType="numeric" disabled={isLoading}/>
+                        <Input placeholder={language.phone} value={fields.phone} onChangeText={(text) => onChange(text.replace(/[^0-9]/g, ''), "phone")} keyboardType="numeric" disabled={isLoading} style={{width: "84%"}} maxLength={12} />
                     </View>
-                    <Input placeholder={language.email} value={fields.email} onChangeText={(text) => onChange(text, "email")}  disabled={isLoading}/>
+                    {/* <Input placeholder={language.email} value={fields.email} onChangeText={(text) => onChange(text, "email")}  disabled={isLoading}/> */}
                     <Button style={Style.button} onPress={RegisterHandler} disabled={isLoading || !context.isConnected}>{language.register}</Button>
                 </View>
             </View>

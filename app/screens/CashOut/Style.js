@@ -26,7 +26,7 @@ export default StyleSheet.create({
         borderColor: "white",
         backgroundColor: "white",
         position: "absolute",
-        zIndex: 99,
+        zIndex: 999,
         top: 45,
     },
     submit: {
