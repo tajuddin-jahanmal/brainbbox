@@ -80,4 +80,13 @@ export default StyleSheet.create({
         marginBottom: -8,
         fontSize: 13,
     },
+    appleButtonContainer: {
+        width: '100%',
+        height: 45,
+        marginVertical: 10,
+    },
+    appleButton: {
+        width: '100%',
+        height: '100%',
+    },
 });
