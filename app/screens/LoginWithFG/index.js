@@ -2,13 +2,13 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetch as NetFetch } from "@react-native-community/netinfo";
+import * as AppleAuthentication from 'expo-apple-authentication';
 import * as AuthSession from 'expo-auth-session';
 import * as Facebook from 'expo-auth-session/providers/facebook';
 import * as Google from 'expo-auth-session/providers/google';
-// import { requestTrackingPermissionsAsync } from "expo-tracking-transparency";
 import * as WebBrowser from 'expo-web-browser';
 import { useContext, useEffect, useState } from "react";
-import { Alert, Linking, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Linking, Platform, Text, TouchableOpacity, View } from "react-native";
 import LinearGradient from 'react-native-linear-gradient';
 import Button from "../../components/Button";
 import UpScreenLoader from "../../components/UpScreenLoader";
@@ -27,17 +27,17 @@ const LoginWithFG = (props) => {
   const context = useContext(ExchangeMoneyContext);
   const [token, setToken] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isAppleLoginAvailable, setIsAppleLoginAvailable] = useState(false);
   
   // Configure Google Auth
   const redirectUri = AuthSession.makeRedirectUri({
-    useProxy: true, // Recommended for development
-    // native: 'com.your.app:/oauthredirect' // Replace with your bundle ID
+    useProxy: true,
   });
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: '504215588437-3nkmfpds107445d47mq408lnjsuhco6h.apps.googleusercontent.com',
-    iosClientId: '504215588437-vc7um5bcsa2q8775h3dmshvhnpljgevb.apps.googleusercontent.com', // REPLACE WITH YOUR IOS CLIENT ID
-    webClientId: '504215588437-3ce7ijkdkljv2lcdnbemgu53b0o3q32j.apps.googleusercontent.com', // Optional but recommended
+    iosClientId: '504215588437-vc7um5bcsa2q8775h3dmshvhnpljgevb.apps.googleusercontent.com',
+    webClientId: '504215588437-3ce7ijkdkljv2lcdnbemgu53b0o3q32j.apps.googleusercontent.com',
     redirectUri,
   });
 
@@ -45,17 +45,17 @@ const LoginWithFG = (props) => {
     clientId: "361987559839890",
   });
 
-  // useEffect(() => {
-  //   const requestTracking = async () => {
-  //     const { status } = await requestTrackingPermissionsAsync();
-  //     Settings.initializeSDK();
-  //     if (status === "granted") {
-  //       await Settings.setAdvertiserTrackingEnabled(true);
-  //     }
-  //   };
-  //   requestTracking();
-  // }, []);
-  
+  // Check if Apple authentication is available (iOS only)
+  useEffect(() => {
+    const checkAppleAuth = async () => {
+      if (Platform.OS === 'ios') {
+        const isAvailable = await AppleAuthentication.isAvailableAsync();
+        setIsAppleLoginAvailable(isAvailable);
+      }
+    };
+    checkAppleAuth();
+  }, []);
+
   useEffect(() => {
     handleEffect();
   }, [response, token]);
@@ -72,11 +72,46 @@ const LoginWithFG = (props) => {
     }
   }, [fbResponse]);
 
-  const handleFacebookLogin = async () => {
-    const result = await fbPromptAsync();
-    if (result.type !== "success") {
-      Alert.alert("Error", "Facebook login failed");
-      return;
+  const handleAppleLogin = async () => {
+    try {
+      setIsLoading(true);
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      // Apple returns null for email if user hides it
+      const email = credential.email || ``;
+      
+      // Create user object similar to Google's response format
+      const user = {
+        id: credential.user,
+        name: credential?.fullName 
+          ? `${credential?.fullName?.givenName || ''} ${credential?.fullName?.familyName || ''}`.trim() 
+          : 'Apple User',
+        email: email,
+        provider: "apple",
+        picture: "https://api.brainbbox.com/images/profile.jpg"
+      };
+
+      const customer = await getCustomer(user.id, user);
+      context.setState(prev => ({...prev, user, customer, login: true}));
+      await AsyncStorage.setItem("@user", JSON.stringify(user));
+      if (customer) {
+        await AsyncStorage.setItem("@customer", JSON.stringify(customer));
+      }
+    } catch (error) {
+      if (error.code === 'ERR_CANCELED') {
+        // User canceled Apple Sign-In
+        console.log('Apple sign-in was canceled');
+      } else {
+        Alert.alert("Error", "Apple login failed");
+        console.error('Apple sign-in error:', error);
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -266,7 +301,7 @@ const LoginWithFG = (props) => {
   };
 
   const guestHandler = async () => {
-    const expirationTime = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
+    const expirationTime = Date.now() + (24 * 60 * 60 * 1000);
     await AsyncStorage.setItem('@guestExpirationTime', expirationTime.toString());
     let guestCustomer = {
       id: generateNumericId(),
@@ -337,6 +372,18 @@ const LoginWithFG = (props) => {
                 >
                   {language.loginWithGoogle}
                 </Button>
+                
+                {(Platform.OS === "ios" && isAppleLoginAvailable) && (
+                  <View style={Style.appleButtonContainer}>
+                    <AppleAuthentication.AppleAuthenticationButton
+                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                      cornerRadius={5}
+                      style={Style.appleButton}
+                      onPress={handleAppleLogin}
+                    />
+                  </View>
+                )}
                 
                 <TouchableOpacity onPress={privacyHandler}>
                   <Text style={Style.privacy}>{language.privacyPolicy}</Text>
