@@ -97,7 +97,7 @@ const DeleteAccount = (props) =>
     const sendHandler = () =>
     {
         if (fields?.message?.length <= 0)
-            return Alert.alert('Info!', language.writeReasonMessage);
+            return Alert.alert('Info!', language.MayWeAskWhy);
         
         onChange(true, "deleteAlert");
     };
