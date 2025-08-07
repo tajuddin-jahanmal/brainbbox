@@ -4,6 +4,7 @@ import * as Contacts from "expo-contacts";
 import { useNavigation } from "expo-router";
 import { useContext, useEffect, useState } from "react";
 import { Alert, Text, View } from "react-native";
+import Toast from "react-native-toast-message";
 import { DataProvider, LayoutProvider } from "recyclerlistview";
 import { AddCustomerValidationAlert } from "../../../components/Alerts";
 import Button from "../../../components/Button";
@@ -116,6 +117,9 @@ const AddCustomer = (props) => {
         type: fields.type,
         providerId: context?.user?.id,
       };
+
+      console.log(data, 'ADD CUSTOMER DATA');
+      
 
       if (context.isGuest) {
         const customerExists = globalState.customers.some(
