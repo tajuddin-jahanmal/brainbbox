@@ -124,6 +124,10 @@ const strings = new LocalizedStrings({
         success: "Success",
         customerSuccessfullyAdded: "Customer successfully added",
         profileSuccessfullyChanged: "Profile successfully changed",
+        privacyPolicy: "Privacy Policy",
+        privacyPolicyMessage: "By using this app, you agree to our Privacy Policy and Terms of Service.",
+        agree: "Agree",
+        disagree: "Disagree",
     },
     ps: {
         isRtl: true,
@@ -246,6 +250,10 @@ const strings = new LocalizedStrings({
         success: "بریا",
         customerSuccessfullyAdded: "پیرودونکی په بریالیتوب سره اضافه شو",
         profileSuccessfullyChanged: "پروفایل په بریالیتوب سره بدل شو",
+        privacyPolicy: "د محرمیت تګلاره",
+        privacyPolicyMessage: "د دې اپلیکیشن په کارولو سره، تاسو زموږ د محرمیت تګلاره او د خدماتو شرایطو سره موافقه کوئ.",
+        agree: "موافق یم",
+        disagree: "ناموافق یم",
     },
     pe: {
         isRtl: true,
@@ -368,6 +376,10 @@ const strings = new LocalizedStrings({
         success: "موفقیت",
         customerSuccessfullyAdded: "مشتری با موفقیت اضافه شد",
         profileSuccessfullyChanged: "پروفایل با موفقیت تغییر کرد",
+        privacyPolicy: "سیاست حفظ حریم خصوصی",
+        privacyPolicyMessage: "با استفاده از این برنامه، شما با سیاست حفظ حریم خصوصی و شرایط خدمات ما موافقت می‌کنید.",
+        agree: "موافقم",
+        disagree: "مخالفم",
     }
 });
 

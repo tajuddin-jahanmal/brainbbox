@@ -72,6 +72,19 @@ const LoginWithFG = (props) => {
     }
   }, [fbResponse]);
 
+  const showPrivacyAlert = () => {
+    return new Promise((resolve) => {
+      Alert.alert(
+        language.privacyPolicy,
+        language.privacyPolicyMessage,
+        [
+          { text: language.disagree, onPress: () => resolve(false) },
+          { text: language.agree, onPress: () => resolve(true) }
+        ],
+      );
+    });
+  };
+
   const handleAppleLogin = async () => {
     try {
       setIsLoading(true);
@@ -301,33 +314,38 @@ const LoginWithFG = (props) => {
   };
 
   const guestHandler = async () => {
-    const expirationTime = Date.now() + (24 * 60 * 60 * 1000);
-    await AsyncStorage.setItem('@guestExpirationTime', expirationTime.toString());
-    let guestCustomer = {
-      id: generateNumericId(),
-      firstName: "Guest",
-      lastName: "",
-      countryCode: "+93",
-      phone: "700012345",
-      email: "guest@brainbbox.com",
-      active: true,
-      userId: null,
-    };
-    await AsyncStorage.setItem("@guest", JSON.stringify(guestCustomer));
-    
-    let currencies = [{code: "؋", id: 1, name: "afghani"}];
-    context.setState(prev => ({
-      ...prev, 
-      customer: guestCustomer, 
-      isGuest: true, 
-      login: true,
-      currency: currencies[0]
-    }));
-    dispatch('setCurrencies', currencies);
+     const agreed = await showPrivacyAlert();
+    if (agreed)
+    {
+      const expirationTime = Date.now() + (24 * 60 * 60 * 1000);
+      await AsyncStorage.setItem('@guestExpirationTime', expirationTime.toString());
+      let guestCustomer = {
+        id: generateNumericId(),
+        firstName: "Guest",
+        lastName: "",
+        countryCode: "+93",
+        phone: "700012345",
+        email: "guest@brainbbox.com",
+        active: true,
+        userId: null,
+      };
+      await AsyncStorage.setItem("@guest", JSON.stringify(guestCustomer));
+      
+      let currencies = [{code: "؋", id: 1, name: "afghani"}];
+      context.setState(prev => ({
+        ...prev, 
+        customer: guestCustomer, 
+        isGuest: true, 
+        login: true,
+        currency: currencies[0]
+      }));
+      dispatch('setCurrencies', currencies);
+    }
   };
 
   const privacyHandler = async () => {
-    const url = "https://sites.google.com/view/brainbbox-privacy-policy/home/";
+    // const url = "https://sites.google.com/view/brainbbox-privacy-policy/home/";
+    const url = "https://sites.google.com/view/brainbbox/home";
     try {
       const supported = await Linking.canOpenURL(url);
       if (supported) {
@@ -366,7 +384,11 @@ const LoginWithFG = (props) => {
                 
                 <Button 
                   style={Style.button} 
-                  onPress={() => promptAsync()} 
+                  onPress={async () => {
+                    const agreed = await showPrivacyAlert();
+                    if (agreed)
+                      promptAsync()
+                  }} 
                   disabled={!request}
                   icon={<AntDesign name="google" size={18} color={Colors.white} />}
                 >
@@ -380,7 +402,11 @@ const LoginWithFG = (props) => {
                       buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
                       cornerRadius={5}
                       style={Style.appleButton}
-                      onPress={handleAppleLogin}
+                      onPress={async () => {
+                        const agreed = await showPrivacyAlert();
+                        if (agreed)
+                          handleAppleLogin
+                      }}
                     />
                   </View>
                 )}
