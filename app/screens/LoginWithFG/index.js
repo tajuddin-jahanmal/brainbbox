@@ -405,7 +405,7 @@ const LoginWithFG = (props) => {
                       onPress={async () => {
                         const agreed = await showPrivacyAlert();
                         if (agreed)
-                          handleAppleLogin
+                          handleAppleLogin()
                       }}
                     />
                   </View>
