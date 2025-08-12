@@ -2,7 +2,7 @@
   "expo": {
     "name": "Brainbbox",
     "slug": "brainbbox",
-    "version": "1.2.8",
+    "version": "1.2.9",
     "orientation": "portrait",
     "icon": "./app/assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSContactsUsageDescription": "Brainbbox needs access to your contacts to connect you with people you know. For example, to create a cashbook and track transactions with a selected number."
+        "NSContactsUsageDescription": "Brainbbox uses your contacts to connect you with people you know. If you agree, the selected contact’s phone number will be uploaded securely to our server to create a cashbook and track transactions."
       },
       "bundleIdentifier": "com.mosaaghajahanmal.brainbbox",
       "entitlements": {
