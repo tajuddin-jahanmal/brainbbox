@@ -1,3 +1,4 @@
+import { Linking, Text, View } from "react-native";
 import language from "../../localization";
 import SweetAlert from "../SweetAlert";
 
@@ -111,11 +112,42 @@ const AccountDeleteProcessAlert = (props) => {
   );
 };
 
+const PrivacyPolicyAlert = (props) => {
+  return (
+    <SweetAlert
+      title={props?.title || language?.weNeedYourConsent}
+      message={props?.message || language?.privacyPolicyMessage}
+      confirm={true}
+      confirmText={props?.confirmText || language?.agree}
+      onConfirm={props?.onConfirm}
+      show={props?.show}
+      // confirmButtonStyle={{ width: 50, ...props?.confirmButtonStyle }}
+      // confirmButtonTextStyle={{ 
+      //   textAlign: 'center', 
+      //   ...props?.confirmButtonTextStyle 
+      // }}
+      customView={
+        <View>
+          <Text
+            style={{ color: 'blue', textDecorationLine: 'underline' }}
+            onPress={() => Linking.openURL('https://sites.google.com/view/brainbbox/home')}
+          >
+            Privacy Policy
+          </Text>
+        </View>
+      }
+      cancel={true}
+      cancelText={props?.cancelText || language?.disagree}
+      onCancelPressed={props?.onCancel}
+      {...props}
+    />
+  );
+};
+
 export {
   AccountDeleteAlert,
   AccountDeleteProcessAlert, AddCustomerValidationAlert,
-  CashInOutValidationAlert,
-  TokenAlert
+  CashInOutValidationAlert, PrivacyPolicyAlert, TokenAlert
 };
 
 export default () => {};

@@ -1,8 +1,7 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useIsFocused } from '@react-navigation/native';
-import * as Contacts from "expo-contacts";
 import { useNavigation } from "expo-router";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 import { Alert, Text, View } from "react-native";
 import Toast from "react-native-toast-message";
 import { DataProvider, LayoutProvider } from "recyclerlistview";
@@ -62,36 +61,35 @@ const AddCustomer = (props) => {
     }));
   };
 
-  useEffect(() => {
-    if (!isFocused) return;
+  // useEffect(() => {
+  //   if (!isFocused) return;
+  //   fetchContacts();
+  // }, [globalState.contacts, isFocused, dispatch]);
 
-    const fetchContacts = async () => {
-      if (globalState.contacts.length <= 0) {
-        const { status } = await Contacts.requestPermissionsAsync();
-        if (status === 'granted') {
-          const { data } = await Contacts.getContactsAsync({
-            fields: [Contacts.Fields.FirstName, Contacts.Fields.LastName, Contacts.Fields.PhoneNumbers],
-          });
+  // const fetchContacts = async () => {
+  //   if (globalState.contacts.length <= 0) {
+  //     const { status } = await Contacts.requestPermissionsAsync();
+  //     if (status === 'granted') {
+  //       const { data } = await Contacts.getContactsAsync({
+  //         fields: [Contacts.Fields.FirstName, Contacts.Fields.LastName, Contacts.Fields.PhoneNumbers],
+  //       });
 
-          if (data.length >= 1) {
-            let filterContacts = data
-              ?.filter(per => per.phoneNumbers && per.phoneNumbers.length > 0)
-              ?.map(per => ({
-                firstName: per.firstName || "",
-                lastName: per.lastName || "",
-                phone: per.phoneNumbers[0].number
-              }));
-            
-            if (filterContacts.length > 0) {
-              dispatch("setContacts", filterContacts);
-            }
-          }
-        }
-      }
-    };
-
-    fetchContacts();
-  }, [globalState.contacts, isFocused, dispatch]);
+  //       if (data.length >= 1) {
+  //         let filterContacts = data
+  //           ?.filter(per => per.phoneNumbers && per.phoneNumbers.length > 0)
+  //           ?.map(per => ({
+  //             firstName: per.firstName || "",
+  //             lastName: per.lastName || "",
+  //             phone: per.phoneNumbers[0].number
+  //           }));
+          
+  //         if (filterContacts.length > 0) {
+  //           dispatch("setContacts", filterContacts);
+  //         }
+  //       }
+  //     }
+  //   }
+  // };
 
   const phonePressHandler = (item) => {
     const { firstName, lastName, phone } = item;
@@ -117,9 +115,6 @@ const AddCustomer = (props) => {
         type: fields.type,
         providerId: context?.user?.id,
       };
-
-      console.log(data, 'ADD CUSTOMER DATA');
-      
 
       if (context.isGuest) {
         const customerExists = globalState.customers.some(

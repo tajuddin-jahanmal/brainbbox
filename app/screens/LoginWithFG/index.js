@@ -10,6 +10,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useContext, useEffect, useState } from "react";
 import { Alert, Linking, Platform, Text, TouchableOpacity, View } from "react-native";
 import LinearGradient from 'react-native-linear-gradient';
+import { PrivacyPolicyAlert } from '../../components/Alerts';
 import Button from "../../components/Button";
 import UpScreenLoader from "../../components/UpScreenLoader";
 import Colors from "../../constant";
@@ -28,6 +29,7 @@ const LoginWithFG = (props) => {
   const [token, setToken] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isAppleLoginAvailable, setIsAppleLoginAvailable] = useState(false);
+  const [privacyPolicyAlert, setPrivacyPolicyAlert] = useState({visible: false, processType: ""});
   
   // Configure Google Auth
   const redirectUri = AuthSession.makeRedirectUri({
@@ -71,19 +73,6 @@ const LoginWithFG = (props) => {
       })();
     }
   }, [fbResponse]);
-
-  const showPrivacyAlert = () => {
-    return new Promise((resolve) => {
-      Alert.alert(
-        language.privacyPolicy,
-        language.privacyPolicyMessage,
-        [
-          { text: language.disagree, onPress: () => resolve(false) },
-          { text: language.agree, onPress: () => resolve(true) }
-        ],
-      );
-    });
-  };
 
   const handleAppleLogin = async () => {
     try {
@@ -314,33 +303,29 @@ const LoginWithFG = (props) => {
   };
 
   const guestHandler = async () => {
-     const agreed = await showPrivacyAlert();
-    if (agreed)
-    {
-      const expirationTime = Date.now() + (24 * 60 * 60 * 1000);
-      await AsyncStorage.setItem('@guestExpirationTime', expirationTime.toString());
-      let guestCustomer = {
-        id: generateNumericId(),
-        firstName: "Guest",
-        lastName: "",
-        countryCode: "+93",
-        phone: "700012345",
-        email: "guest@brainbbox.com",
-        active: true,
-        userId: null,
-      };
-      await AsyncStorage.setItem("@guest", JSON.stringify(guestCustomer));
-      
-      let currencies = [{code: "؋", id: 1, name: "afghani"}];
-      context.setState(prev => ({
-        ...prev, 
-        customer: guestCustomer, 
-        isGuest: true, 
-        login: true,
-        currency: currencies[0]
-      }));
-      dispatch('setCurrencies', currencies);
-    }
+    const expirationTime = Date.now() + (24 * 60 * 60 * 1000);
+    await AsyncStorage.setItem('@guestExpirationTime', expirationTime.toString());
+    let guestCustomer = {
+      id: generateNumericId(),
+      firstName: "Guest",
+      lastName: "",
+      countryCode: "+93",
+      phone: "700012345",
+      email: "guest@brainbbox.com",
+      active: true,
+      userId: null,
+    };
+    await AsyncStorage.setItem("@guest", JSON.stringify(guestCustomer));
+    
+    let currencies = [{code: "؋", id: 1, name: "afghani"}];
+    context.setState(prev => ({
+      ...prev, 
+      customer: guestCustomer, 
+      isGuest: true, 
+      login: true,
+      currency: currencies[0]
+    }));
+    dispatch('setCurrencies', currencies);
   };
 
   const privacyHandler = async () => {
@@ -376,7 +361,8 @@ const LoginWithFG = (props) => {
               <View>
                 <Button 
                   style={Style.button} 
-                  onPress={guestHandler} 
+                  // onPress={guestHandler} 
+                  onPress={() => setPrivacyPolicyAlert({visible: true, processType: "guest"})} 
                   icon={<Ionicons name="person-sharp" size={18} color={Colors.white} />}
                 >
                   {language.loginWithGuest}
@@ -384,11 +370,10 @@ const LoginWithFG = (props) => {
                 
                 <Button 
                   style={Style.button} 
-                  onPress={async () => {
-                    const agreed = await showPrivacyAlert();
-                    if (agreed)
-                      promptAsync()
-                  }} 
+                  // onPress={async () => {
+                  //     promptAsync()
+                  // }} 
+                  onPress={() => setPrivacyPolicyAlert({visible: true, processType: "google"})} 
                   disabled={!request}
                   icon={<AntDesign name="google" size={18} color={Colors.white} />}
                 >
@@ -402,11 +387,10 @@ const LoginWithFG = (props) => {
                       buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
                       cornerRadius={5}
                       style={Style.appleButton}
-                      onPress={async () => {
-                        const agreed = await showPrivacyAlert();
-                        if (agreed)
-                          handleAppleLogin
-                      }}
+                      // onPress={async () => {
+                      //     handleAppleLogin()
+                      // }}
+                      onPress={() => setPrivacyPolicyAlert({visible: true, processType: "apple"})} 
                     />
                   </View>
                 )}
@@ -417,6 +401,19 @@ const LoginWithFG = (props) => {
               </View>
             </View>
           </View>
+          <PrivacyPolicyAlert
+            show={privacyPolicyAlert.visible}
+            onConfirm={async () => {
+              if (privacyPolicyAlert.processType === "guest")
+                guestHandler();
+              else if (privacyPolicyAlert.processType === "google")
+                promptAsync();
+              else if (privacyPolicyAlert.processType === "apple")
+                handleAppleLogin();
+              setPrivacyPolicyAlert({visible: false, processType: ""})
+            }}
+            onCancel={() => setPrivacyPolicyAlert({visible: false, processType: ""})}
+          />
         </LinearGradient>
       ) : (
         <UpScreenLoader />

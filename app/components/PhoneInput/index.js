@@ -1,4 +1,5 @@
 import Entypo from '@expo/vector-icons/Entypo.js';
+import * as Contacts from "expo-contacts";
 import React, { useEffect, useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
 import { CountryPicker } from "react-native-country-codes-picker";
@@ -17,7 +18,7 @@ const PhoneInput = (props) =>
         countryCode: "+93",
         showCountryCode: false,
     }
-    const [ globalState ] = useStore();
+    const [ globalState, dispatch ] = useStore();
     const [ fields, setFields ] = useState(initState);
 	const [ dataProvider, setDataProvider ] = useState(new DataProvider((r1, r2) => r1 !== r2));
 	const isRTL = language.isRtl;
@@ -42,7 +43,7 @@ const PhoneInput = (props) =>
             setFields(prev => ({...prev, [type]: value}));
             props.phoneHandler(fields.countryCode, value);
 
-            if (!fields.showDropdown)
+            if (!fields.showDropdown && globalState.contacts.length >= 1)
                 onChange(true, "showDropdown");
 
             if (value.length === 0)
@@ -109,6 +110,37 @@ const PhoneInput = (props) =>
 		)
 	}
 
+    const downIconHandler = () =>
+    {
+        onChange(!fields.showDropdown, "showDropdown");
+        fetchContacts();
+    }
+
+    const fetchContacts = async () => {
+        if (globalState.contacts.length <= 0) {
+          const { status } = await Contacts.requestPermissionsAsync();
+          if (status === 'granted') {
+            const { data } = await Contacts.getContactsAsync({
+              fields: [Contacts.Fields.FirstName, Contacts.Fields.LastName, Contacts.Fields.PhoneNumbers],
+            });
+    
+            if (data.length >= 1) {
+              let filterContacts = data
+                ?.filter(per => per.phoneNumbers && per.phoneNumbers.length > 0)
+                ?.map(per => ({
+                  firstName: per.firstName || "",
+                  lastName: per.lastName || "",
+                  phone: per.phoneNumbers[0].number
+                }));
+              
+              if (filterContacts.length > 0) {
+                dispatch("setContacts", filterContacts);
+              }
+            }
+          }
+        }
+      };
+
 
     return (
         <View style={[Style.container, props.style]}>
@@ -126,7 +158,7 @@ const PhoneInput = (props) =>
                     onSubmitEditing={() => onChange(!fields.showDropdown, "showDropdown")}
                     placeholderTextColor={isAndroid ? "#808080" : "#C7C7CD"}
                 />
-                <TouchableOpacity style={Style.downIcon} onPress={() => onChange(!fields.showDropdown, "showDropdown")}>
+                <TouchableOpacity style={Style.downIcon} onPress={downIconHandler}>
                     <Entypo
                         name="chevron-down"
                         size={24} color={Colors.textColor}
