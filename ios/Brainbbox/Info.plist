@@ -79,7 +79,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to access your camera</string>
 	<key>NSContactsUsageDescription</key>
-	<string>Brainbbox uses your contacts to connect you with people you know. If you agree, the selected contact’s phone number will be uploaded securely to our server to create a cashbook and track transactions.</string>
+	<string>Brainbbox needs access to your contacts to display your contact numbers in a dropdown, so you can easily select one and create a cashbook to track transactions.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to use Face ID</string>
 	<key>NSMicrophoneUsageDescription</key>
