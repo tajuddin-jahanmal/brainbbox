@@ -19,7 +19,7 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.2.7</string>
+	<string>1.2.8</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -45,7 +45,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
 	<key>FacebookAdvertiserIDCollectionEnabled</key>
 	<false/>
 	<key>FacebookAppID</key>
@@ -79,7 +79,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to access your camera</string>
 	<key>NSContactsUsageDescription</key>
-	<string>We use your contacts to help you connect with other users you know. Your contact information will be securely uploaded to our server only with your consent.</string>
+	<string>Brainbbox uses your contacts to connect you with people you know. If you agree, the selected contact’s phone number will be uploaded securely to our server to create a cashbook and track transactions.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to use Face ID</string>
 	<key>NSMicrophoneUsageDescription</key>

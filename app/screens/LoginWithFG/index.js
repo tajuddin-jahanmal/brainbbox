@@ -387,10 +387,11 @@ const LoginWithFG = (props) => {
                       buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
                       cornerRadius={5}
                       style={Style.appleButton}
-                      // onPress={async () => {
-                      //     handleAppleLogin()
-                      // }}
-                      onPress={() => setPrivacyPolicyAlert({visible: true, processType: "apple"})} 
+                      onPress={async () => {
+                        const agreed = await showPrivacyAlert();
+                        if (agreed)
+                          handleAppleLogin
+                      }}
                     />
                   </View>
                 )}
