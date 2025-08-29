@@ -1,6 +1,6 @@
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
 import { useContext, useEffect, useState } from "react";
-import { Platform, ScrollView, Text, ToastAndroid, TouchableOpacity, View } from "react-native";
+import { Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import Card from "../../components/Card";
 import Header from "../../components/Header";
 import Colors from "../../constant";
@@ -309,7 +309,7 @@ const General = (props) =>
                     }    
                 }
                 
-                ToastAndroid.show(language.backupCompleted, ToastAndroid.SHORT);
+                // ToastAndroid.show(language.backupCompleted, ToastAndroid.SHORT);
                 showToast();
                 onChange(false, "backupModalVisible");
             }

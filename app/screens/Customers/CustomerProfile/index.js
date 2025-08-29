@@ -37,6 +37,7 @@ const CustomerProfile = (props) =>
         showDatePicker: { visible: false, type: "" },
         from: "",
         to: "",
+		selectedDate: new Date(),
         currentPage: 1,
         totalDataLength: 0,
         transactionModal: {visible: false, data: {}},
@@ -641,9 +642,11 @@ const CustomerProfile = (props) =>
 								modal
 								mode="date"
 								open={fields.showDatePicker.visible}
-								date={new Date()}
+								date={fields.selectedDate}
 								onConfirm={(date) => {
 									dateChanger(null, date);
+									onChange(date, "selectedDate")
+									onChange({ visible: false, type: "" }, "showDatePicker");
 								}}
 								onCancel={() => {
 									setFields(prev => ({...prev, showDatePicker: { visible: false, type: "" }}));
