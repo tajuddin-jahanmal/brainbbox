@@ -4,6 +4,8 @@ buildscript {
   repositories {
     google()
     mavenCentral()
+    maven { url 'https://maven-central.storage-download.googleapis.com/maven2' } // Central mirror
+    gradlePluginPortal()
   }
   dependencies {
     classpath('com.android.tools.build:gradle')
