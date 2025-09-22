@@ -27,9 +27,9 @@ const Currency = (props) =>
 		// if (!context.isConnected)
 		// 	return;
 		
-		if (type === "currency" && fields.currency?.length >= 1)
+		if (type === "currency" && (fields.currency + "")?.length >= 1)
 		{
-			const matchedCurrency = fields.currencies?.find(cu => cu.key === value);
+			const matchedCurrency = fields.currencies?.find(cu => cu.key == value);
 
 			if (matchedCurrency) {
 				setFields(prev => ({ ...prev, currency: matchedCurrency.value }));
