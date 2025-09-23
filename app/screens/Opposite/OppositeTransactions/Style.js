@@ -135,7 +135,7 @@ export default StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-around",
-        marginVertical: 10,
+        marginBottom: 10,
     },
     shareShowContainer: {
         flexDirection: "row",

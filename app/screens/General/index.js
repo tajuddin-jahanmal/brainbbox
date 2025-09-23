@@ -236,6 +236,11 @@ const General = (props) =>
                 await AsyncStorage.setItem("@language", JSON.stringify({language: "pe"}));
                 context.setState(prev => ({...prev, language: "pe"}))
                 break;
+            case "ur":
+                language.setLanguage("ur");
+                await AsyncStorage.setItem("@language", JSON.stringify({language: "ur"}));
+                context.setState(prev => ({...prev, language: "ur"}))
+                break;
         }
     };
 
@@ -401,7 +406,7 @@ const General = (props) =>
                     }
                     <ArrowCardDropdown
                         title={language.language}
-                        content={[{key: "en", value: "English"}, {key: "ps", value: "پښتو"}, {key: "pe", value: "فارسي"}]}
+                        content={[{key: "en", value: "English"}, {key: "ps", value: "پښتو"}, {key: "pe", value: "فارسي"}, {key: "ur", value: "اردو"}]}
                         contenthandler={(key) => contenthandler(key)}
                         cardHandler={() => {}}
                     />

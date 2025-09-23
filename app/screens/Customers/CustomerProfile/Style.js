@@ -31,7 +31,8 @@ export default StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-around",
-        marginVertical: 10,
+        // marginVertical: 10,
+        marginTop: 10,
     },
     cashsContainer: {
         flexDirection: "row",
@@ -99,7 +100,7 @@ export default StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: 'space-evenly',
-        marginBottom: 6
+        marginVertical: 6
     },
     flexRow: {
         width: "92%",
@@ -134,6 +135,7 @@ export default StyleSheet.create({
     showTxtContainer: {
         // alignSelf: "flex-end",
         padding: 5,
+        paddingBottom: 0,
     },
     showTxt: {
         color: Colors.primary,

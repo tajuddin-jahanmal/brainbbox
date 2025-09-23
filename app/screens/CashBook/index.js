@@ -258,18 +258,18 @@ const CashBook = (props) =>
 						fields.showTotalCashinOut &&
 						<Card style={Style.cashInOutContainer} activeOpacity={1}>
 							<View style={Style.cashInOutContent}>
-								<View style={Style.cashInOut}>
+								{/* <View style={Style.cashInOut}>
 									<Text>{language.cashIn}</Text>
 									<Text style={{...Style.cashInOutMony, ...Style.cashIn, ...{fontSize: GetResponsiveFontSize(fields.totalCashInOut.cashIn)}}}>{fields.totalCashInOut.cashIn} {context.currency.code}</Text>
-								</View>
+								</View> */}
 								<View style={Style.cashInOut}>
 									<Text>{language.cash}</Text>
 									<Text style={{...Style.cashInOutMony, ...fields.totalCashInOut.cash < 0 ? Style.cashOut : Style.cashIn, ...{fontSize: GetResponsiveFontSize(fields.totalCashInOut.cash)}}}>{fields.totalCashInOut.cash} {context.currency.code}</Text>
 								</View>
-								<View style={Style.cashInOut}>
+								{/* <View style={Style.cashInOut}>
 									<Text>{language.cashOut}</Text>
 									<Text style={{...Style.cashInOutMony, ...Style.cashOut, ...{fontSize: GetResponsiveFontSize(fields.totalCashInOut.cashOut)}}}>{fields.totalCashInOut.cashOut} {context.currency.code}</Text>
-								</View>
+								</View> */}
 							</View>
 
 							<CustomeDropdown />
