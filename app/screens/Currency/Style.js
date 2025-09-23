@@ -15,6 +15,8 @@ export default StyleSheet.create({
         alignItems: "center",
         justifyContent: "space-between",
         marginBottom: 10,
+        position: "relative",
+        zIndex: 999
     },
     dropDown: {
         color: Colors.textColor,

@@ -6,6 +6,8 @@ export default StyleSheet.create({
         flex: 1,
         justifyContent: "center",
         paddingHorizontal: 10,
+        position: "relative",
+        zIndex: 999
     },
     card: {
         // backgroundColor: "#f1f4f9",
