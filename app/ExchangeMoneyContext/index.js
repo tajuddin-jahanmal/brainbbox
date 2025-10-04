@@ -347,7 +347,7 @@ const ExchangeMoneyProvider = (props) =>
         await AsyncStorage.removeItem('@appLock');
         await AsyncStorage.removeItem('@hasSeenUpdate');
         await AsyncStorage.removeItem('@appSliders');
-        await AsyncStorage.removeItem('@currencyRate');
+        // await AsyncStorage.removeItem('@currencyRate');
         await AsyncStorage.setItem("isFirstTime", JSON.stringify({isFirstTime: true}));
         clearCustomersTable();
         clearOppositeCustomersTable();

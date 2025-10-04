@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+// import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/core";
@@ -609,10 +609,10 @@ const Home = (props) =>
 						<MaterialCommunityIcons name="currency-usd" size={24} color={Colors.textColor} />
 						<Text style={Style.serviceTitle}>{language.currency}</Text>
 					</Card>
-					{!context.isGuest && <Card style={Style.serviceCard} onPress={() => navigate("CurrencyRate")}>
+					{/* {!context.isGuest && <Card style={Style.serviceCard} onPress={() => navigate("CurrencyRate")}>
 						<MaterialIcons name="currency-exchange" size={24} color={Colors.textColor} />
 						<Text style={Style.serviceTitle}>{language.currencyRate}</Text>
-					</Card>}
+					</Card>} */}
 					{/* <Card style={Style.serviceCard} onPress={() => navigate("SelfCash")}>
 						<MaterialIcons name="show-chart" size={24} color={Colors.textColor} />
 						<Text style={Style.serviceTitle}>Self Cash</Text>
