@@ -2,14 +2,16 @@
 const SortData = (data) => { return (data?.sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime)) || []) };
 
 export const SortCustomers = (data) => {
-  data?.sort((a, b) => {
-    if (a.firstName < b.firstName) {
-      return -1;
-    } else {
-      return 1;
-    }
+  if (!Array.isArray(data)) return [];
+
+  data.sort((a, b) => {
+    const nameA = (a.firstName || "") + " " + (a.lastName || "");
+    const nameB = (b.firstName || "") + " " + (b.lastName || "");
+
+    return nameA.localeCompare(nameB, "en", { sensitivity: "base" });
   });
-  return (data || []);
-}
+
+  return data;
+};
 
 export default SortData;

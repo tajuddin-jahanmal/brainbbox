@@ -300,8 +300,32 @@ const ExchangeMoneyProvider = (props) =>
         if (state.isConnected)
           checkAppUpdate();
 
+        // i added the object.keys because the empty object is true so the condition come true.
+        // if (state.isConnected && state.user && state.customer && Object.keys(state.user).length > 0 && !state.isGuest)
+        if (state.isConnected && state.user && state.customer && !state.isGuest)
+        {
+          try {
+             const userResponse = await fetch(serverPath("/user"), {
+                method: "PUT",
+                headers: { "Content-Type": "Application/JSON" },
+                body: JSON.stringify({
+                  providerId: state?.user?.id, 
+                  provider: state?.user?.provider, 
+                  id: state?.customer?.user?.id, 
+                  platform: "app",
+                })
+              });
+
+              const objData = await userResponse.json();
+              if (objData.status === "failure")
+                console.log(objData, 'status failure User Last Seen');
+              
+          } catch (error) {
+            console.log("updating user last_seen_app_at [ExchangeMoneyContext]", error);
+          }
+        }
       })();
-    }, [state.user, state.customer]);
+    }, [state?.user, state.customer]);
 
     useEffect(() =>
     {

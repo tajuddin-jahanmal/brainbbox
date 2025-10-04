@@ -245,8 +245,12 @@ const LoginWithFG = (props) => {
           provider: user.provider, 
           id: providerId, 
           displayName: user?.name, 
+          firstName: user?.given_name, 
+          lastName: user?.family_name, 
+          displayName: user?.name, 
           email: user?.email, 
-          image: user?.picture
+          image: user?.picture,
+          platform: "app",
         })
       });
       
