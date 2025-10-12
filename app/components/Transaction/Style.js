@@ -1,6 +1,8 @@
 import { StyleSheet } from "react-native";
 import Colors from "../../constant";
 
+const ACTION_WIDTH = 55;
+
 export default StyleSheet.create({
     card: {
         flexDirection: "row",
@@ -67,5 +69,18 @@ export default StyleSheet.create({
     },
     primaryColor: {
         color: Colors.primary,
-    }
+    },
+
+    rightAction: {
+        width: ACTION_WIDTH,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#6fc1f7ff",
+        borderRadius: 10,
+        // marginVertical: 6,
+    },
+    actionBtn: {
+        backgroundColor: "transparent",
+        elevation: 0,
+    },
 });

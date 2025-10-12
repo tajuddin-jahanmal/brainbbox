@@ -26,7 +26,7 @@ const CashIn = (props) =>
 {
 	const navigation = useNavigation();
 	const { goBack } = navigation;
-	const { type, dailyTrans, selfCash, cashbookId, fromCashbook } = props.route?.params;
+	const { dailyTrans, selfCash, cashbookId, fromCashbook, transactionEdit, transactionId } = props.route?.params;
 	const context = useContext(ExchangeMoneyContext);
 
 	const initState = {
@@ -50,6 +50,15 @@ const CashIn = (props) =>
 			visibilityTime: 2000,
 		});
 	};
+	const showEditToast = () => {
+		Toast.show({
+			type: 'success',
+			text1: language.success,
+			text2: language.CashInSuccessfullyEdited,
+			swipeable: true,
+			visibilityTime: 2000,
+		});
+	};
 
 	const [ globalState, dispatch ] = useStore(false);
 	const [ fields, setFields ] = useState(initState);
@@ -58,15 +67,41 @@ const CashIn = (props) =>
 	useEffect(() => {
 		let currencies = [];
 		globalState.currencies.forEach(curr => {
-				currencies.push({key: curr.id, value: curr.code, });
+				currencies.push({key: curr.id, value: curr.code });
 		});
 		onChange(currencies, "currenciesData");
 
 		StatusBar.setBackgroundColor(Colors.green);
 		return () => {
-				StatusBar.setBackgroundColor(Colors.primary);
+			StatusBar.setBackgroundColor(Colors.primary);
 		}
 	}, []);
+	useEffect(() => {
+		if (transactionEdit)
+		{
+			if (transactionId?._id)
+			{
+				const transaction = globalState.transactions.find(transaction => transaction._id === transactionId._id)
+				setFields(prev => ({
+					...prev,
+					amount: transaction.amount.toString(),
+					profit: transaction.profit.toString(),
+					currencyId: transaction.currencyId,
+					information: transaction.information,
+				}));
+			} else {
+				const transaction = globalState.transactions.find(transaction => transaction.id === transactionId.id)
+				setFields(prev => ({
+					...prev,
+					amount: transaction.amount.toString(),
+					profit: transaction.profit.toString(),
+					currencyId: transaction.currencyId,
+					information: transaction.information,
+				}));
+			}
+		}
+	}, [transactionEdit]);
+
 	const onChange = (value, type) =>
 	{
 			if (isLoading)
@@ -76,9 +111,190 @@ const CashIn = (props) =>
 					[type]: value,
 			}));
 	};
+	
+	// IN EDIT HANDLER I DON'T DID THE CODE FOR SELFCASH BECAUSE NOW WE DON'T USE SELFCASH
+	const editHandler = async () =>
+	{
+		if (context.isGuest) {
+			// NOW THE GUEST HAS ONLY ONE CURRENCY IF GUEST HAS MORE CURRENCIES THE CODE SHOULD BE DEVELOPE.
+			return transactionEditManager();
+		}
+
+		if (!context.isConnected)
+			return transactionEditManager("offline", queueTransaction);
+
+		transactionEditManager("online");
+	}
+
+	const transactionEditManager = async (mode, offlineTransaction) =>
+	{
+		const transactionsClone = [...globalState.transactions];
+		let transaction;
+		if (transactionId?._id)
+			transaction = transactionsClone.find(transaction => transaction._id === transactionId._id)
+		else
+			transaction = transactionsClone.find(transaction => transaction.id === transactionId.id)
+
+		let cloneCustomers = [...globalState.customers];
+		let cashBookIndex = cloneCustomers.findIndex(per => (per._id || per.id) == cashbookId);
+		if(cashBookIndex < 0)
+			return Alert.alert(language.info,  language.pleaseTryAgain);
+		
+		let cloneSummary = [...cloneCustomers[cashBookIndex]?.summary];
+		let summaryIndex = cloneSummary.findIndex(per => per.currencyId == fields.currencyId);
+		if(summaryIndex < 0 && cloneSummary?.length > 0)
+		{
+			summaryIndex = cloneSummary?.length;
+			cloneSummary = [...cloneSummary, {cashIn: 0, cashOut: 0, currencyId: fields.currencyId, totalProfit: 0, cashbookId: cloneCustomers[cashBookIndex]?._id || cloneCustomers[cashBookIndex]?.id }]
+		}
+		if(summaryIndex < 0  && cloneSummary?.length <= 0)
+		{
+			summaryIndex = 0;
+			cloneSummary = [{cashIn: 0, cashOut: 0, currencyId: fields.currencyId, totalProfit: 0, cashbookId: cloneCustomers[cashBookIndex]?._id || cloneCustomers[cashBookIndex]?.id }]
+		}
+
+		let In_Out_Amount = cloneSummary[summaryIndex][fields.type ? "cashIn" : "cashOut"];
+		let editAmount = (Number.parseInt(In_Out_Amount) - Number.parseInt(transaction.amount) + Number.parseInt(fields.amount));
+		let totalProfit = (Number.parseInt(cloneSummary[summaryIndex].totalProfit) - Number.parseInt(transaction.profit) + Number.parseInt(fields.profit))
+		cloneSummary[summaryIndex][fields.type ? "cashIn" : "cashOut"] = editAmount;
+		cloneSummary[summaryIndex].totalProfit = totalProfit;
+		cloneCustomers[cashBookIndex].summary = cloneSummary;
+
+		const customerData = await Customers.getCustomers();
+		const findCust = customerData.find(customer => customer._id === cashbookId);
+
+		if (transaction.currencyId !== fields.currencyId)
+		{
+			// IF THE CURRENCY IS CHANGE THE TRANSACTION SHOULD REMOVE FROM GLOBALSTATE.TRANSACTIONS AND ADD TO THE OWN CURRENCY ACCOUNT
+			// AND THE NEW AND OLD TRANSACTIONS WITH BOTH CURRECIES ARE HAVE ACCOUNTING CHANGES
+		}
+		
+		transaction.amount = Number(fields.amount);
+		transaction.profit = Number(fields.profit);
+		transaction.currencyId = fields.currencyId;
+		transaction.information = fields.information;
+
+		if (mode === "offline")
+		{
+			const offlineQueue = await Queue.getQueueEntries();
+			const offlineQueueClone = [...offlineQueue];
+			if (offlineQueueClone.length >= 1)
+			{
+				const queueTransaction = offlineQueueClone.find(que => JSON.parse(que.data).cashbookId === cashbookId);
+				if (queueTransaction)
+				{
+					queueTransaction.data.amount = transaction.amount;
+					queueTransaction.data.profit = transaction.profit;
+					queueTransaction.data.currencyId = transaction.currencyId;
+					queueTransaction.data.information = transaction.information;
+					Queue.updateQueueEntry(queueTransaction.id, "edit", transaction.id, "transactions", JSON.stringify(transaction), transaction?._id);
+				} else {
+					Queue.createQueueEntry("edit", transaction.id, "transactions", JSON.stringify(transaction), transaction?._id);
+				}
+			} else {
+				Queue.createQueueEntry("edit", transaction.id, "transactions", JSON.stringify(transaction), transaction?._id);
+			}
+		}
+		if (mode === "online")
+		{
+			setIsLoading(true);
+			try {
+				const response = await fetch(serverPath("/transaction"), {
+					method: "PUT",
+					headers: {
+						"Content-Type": "Application/JSON",
+					},
+					body: JSON.stringify(transaction)
+				});
+		
+				const objData = await response.json();
+				if (objData.status === "success")
+				{
+					setIsLoading(false);
+					Customers.updateCustomer(
+						findCust.id,
+						findCust.firstName,
+						findCust.lastName,
+						findCust.countryCode,
+						findCust.phone,
+						findCust.email,
+						JSON.stringify(cloneCustomers[cashBookIndex].summary),
+						findCust.active,
+						findCust.userId
+					);
+					TransactionDB.updateTransaction(
+						transaction.id,
+						transaction._id,
+						transaction.amount,
+						transaction.profit,
+						transaction.information,
+						transaction.currencyId,
+						transaction.cashbookId,
+						transaction.type,
+						transaction.dateTime,
+						transaction.isReceivedMobile,
+						transaction.photo,
+					);
+
+					dispatch("setCustomers", cloneCustomers);
+					dispatch("setTransactions", transactionsClone);
+					showEditToast();
+					setFields(initState);
+					goBack();
+				}
+		
+				if (objData.status === "failure")
+				{
+					setIsLoading(false);
+					Alert.alert(language.info, objData.message)
+				};
+			} catch (error) {
+				setIsLoading(false);
+				console.log(error.message, "error.message Edit CashIn");
+				Alert.alert(language.alert, error.message);
+			}
+			return;
+		}
+
+		Customers.updateCustomer(
+			findCust.id,
+			findCust.firstName,
+			findCust.lastName,
+			findCust.countryCode,
+			findCust.phone,
+			findCust.email,
+			JSON.stringify(cloneCustomers[cashBookIndex].summary),
+			findCust.active,
+			findCust.userId
+		);
+
+		// WHEN THE TRANSACTION IS NEW CREATED IT LOOKS LIKE (f1S0mZ3CNTlT transaction.id) (undefined transaction._id)
+		TransactionDB.updateTransaction(
+			transaction.id,
+			transaction._id,
+			transaction.amount,
+			transaction.profit,
+			transaction.information,
+			transaction.currencyId,
+			transaction.cashbookId,
+			transaction.type,
+			transaction.dateTime,
+			transaction.isReceivedMobile,
+			transaction.photo,
+		);
+
+		dispatch("setCustomers", cloneCustomers);
+		dispatch("setTransactions", transactionsClone);
+		showEditToast();
+		setFields(initState);
+		goBack();
+		return;
+	}
 
 	const submitHandler = async () =>
 	{
+		if (isLoading) return;
+		
 		try {
 			if (fromCashbook && fields.cashbookId?.length <= 0)
 				return Alert.alert(language.info, language.pleaseSelectCustomer);
@@ -91,7 +307,8 @@ const CashIn = (props) =>
 				information: fields.information,
 				providerId: context?.user?.id,
 				cashbookId: (fromCashbook ? fields?.cashbookId : cashbookId),
-				dateTime: new Date().toString(),
+				// dateTime: new Date().toString(),
+				dateTime: new Date().toISOString(),
 				type: fields.type,
 				isReceivedMobile: true,
 			}
@@ -111,23 +328,26 @@ const CashIn = (props) =>
 				return;
 			}
 
+			if (transactionEdit)
+				return editHandler();
+
 			if (context.isGuest)
 			{
 				delete requestData.providerId;
-				requestData.amount = Number.parseInt(requestData.amount);
-				requestData.profit = Number.parseInt(requestData.profit);
+				requestData.amount = Number(requestData.amount);
+				requestData.profit = Number(requestData.profit);
 				requestData.id = idGenerator();
 
 				submitedDataHandler({data: requestData});
 				return;
-			}			
+			}
 
 			if (!context.isConnected)
 			{
 				delete requestData.providerId;
 				requestData.id = idGenerator();
-				requestData.amount = Number.parseInt(requestData.amount);
-				requestData.profit = Number.parseInt(requestData.profit);
+				requestData.amount = Number(requestData.amount);
+				requestData.profit = Number(requestData.profit);
 				if (selfCash)
 					Queue.createQueueEntry("insert", requestData.id, "selfCash", JSON.stringify(requestData), null);
 				else
@@ -145,8 +365,8 @@ const CashIn = (props) =>
 				{
 					delete requestData.providerId;
 					requestData.id = idGenerator();
-					requestData.amount = Number.parseInt(requestData.amount);
-					requestData.profit = Number.parseInt(requestData.profit);
+					requestData.amount = Number(requestData.amount);
+					requestData.profit = Number(requestData.profit);
 					if (selfCash)
 						Queue.createQueueEntry("insert", requestData.id, "selfCash", JSON.stringify(requestData), null);
 					else
@@ -186,10 +406,10 @@ const CashIn = (props) =>
 		if (selfCash)
 		{
 			const data = objData.data;
-			data.amount = Number.parseInt(data.amount);
-			data.profit = Number.parseInt(data.profit);
-			data.currencyId = Number.parseInt(data.currencyId);
-			data.cashbookId = Number.parseInt(data.cashbookId);
+			data.amount = Number(data.amount);
+			data.profit = Number(data.profit);
+			data.currencyId = Number(data.currencyId);
+			data.cashbookId = Number(data.cashbookId);
 
 			if (context.currency?.id === fields.currencyId)
 				dispatch("setSelfCash", [...globalState.selfCash, data]);
@@ -205,7 +425,7 @@ const CashIn = (props) =>
 				objData.data.dateTime
 			);
 			
-			// setFields(initState);
+			setFields(initState);
 			goBack();
 			// ToastAndroid.show(language.CashInSuccessfullyAdded, ToastAndroid.SHORT);
 			showToast();
@@ -222,11 +442,15 @@ const CashIn = (props) =>
 		// Cashbook Transactions
 		const offlineTransactionsByDate = await TransactionDB.transByDateAndcashbbokId("", "", (fromCashbook ? fields?.cashbookId : cashbookId), context.currency?.id, "custom");
 		if (context.isConnected) {
-			let oldDailyTranscations = [];
-			globalState.dailyTransactions.find(trans => {
-				if (trans.cashbookId === (fromCashbook ? fields?.cashbookId : cashbookId) && trans.currencyId === context.currency?.id)
-				oldDailyTranscations.push(trans);
-			});
+			// let oldDailyTranscations = [];
+			// globalState.dailyTransactions.find(trans => {
+			// 	if (trans.cashbookId === (fromCashbook ? fields?.cashbookId : cashbookId) && trans.currencyId === context.currency?.id)
+			// 	oldDailyTranscations.push(trans);
+			// });
+
+			const oldDailyTranscations = globalState.dailyTransactions.filter( trans => 
+				trans.cashbookId === (fromCashbook ? fields?.cashbookId : cashbookId) && trans.currencyId === context.currency?.id
+			);
 
 			if (oldDailyTranscations?.length <= 0)
 			{
@@ -251,11 +475,9 @@ const CashIn = (props) =>
 	{
 		const offlineTransactions = await TransactionDB.getTransactions();
 		if (context.isConnected) {
-			let oldTranscations = [];
-			globalState.transactions.find(trans => {
-				if (trans.cashbookId === (fromCashbook ? fields?.cashbookId : cashbookId) && trans.currencyId === context.currency?.id)
-					oldTranscations.push(trans);
-			});
+			const oldTranscations = globalState.transactions.filter( trans =>
+			    trans.cashbookId === (fromCashbook ? fields?.cashbookId : cashbookId) && trans.currencyId === context.currency?.id
+			);
 
 			if (oldTranscations?.length <= 0)
 			{
@@ -279,7 +501,8 @@ const CashIn = (props) =>
 
 	const dataManager = async (objData, ...options) =>
 	{
-		TransactionDB.createTransaction(
+		// WITH newTransaction WE HAVE THE _ID AND ID OTHER WAYS WE ONLY HAVE THE ID NOT _ID
+		const newTransaction = await TransactionDB.createTransaction(
 			objData.data.id,
 			objData.data.amount,
 			objData.data.profit,
@@ -330,6 +553,7 @@ const CashIn = (props) =>
 			findCust.userId
 		);
 
+
 		dispatch("setCustomers", cloneCustomers);
 		if (context.currency?.id === fields.currencyId)
 		{
@@ -338,45 +562,45 @@ const CashIn = (props) =>
 				const offlineTransactions = await TransactionDB.getTransactions();
 				dispatch("setTransactions", [...offlineTransactions]);
 			} else {
-				dispatch("setTransactions", options[0]?.transactions ? [...options[0]?.transactions, objData.data] : [...globalState.transactions, objData.data]);
+				dispatch("setTransactions", options[0]?.transactions ? [...options[0]?.transactions, newTransaction] : [...globalState.transactions, newTransaction]);
+				// dispatch("setTransactions", options[0]?.transactions ? [...options[0]?.transactions, objData.data] : [...globalState.transactions, objData.data]);
 			}
-			dispatch("setDailyTransactions", options[0]?.dailyTransactions ? [...options[0]?.dailyTransactions, objData.data] : [...globalState.dailyTransactions, objData.data]);
+			dispatch("setDailyTransactions", options[0]?.dailyTransactions ? [...options[0]?.dailyTransactions, newTransaction] : [...globalState.dailyTransactions, newTransaction]);
+			// dispatch("setDailyTransactions", options[0]?.dailyTransactions ? [...options[0]?.dailyTransactions, objData.data] : [...globalState.dailyTransactions, objData.data]);
 		};
 
 
+		showToast();
+		setFields(initState);
 		goBack();
 		// ToastAndroid.show(language.CashInSuccessfullyAdded, ToastAndroid.SHORT);
-		showToast();
 	}
 
 	const customerDataFinder = (data) =>
 	{
-		let cashTransactions = [];
-		data.find(trans => {
-			if (trans.cashbookId === ((fromCashbook ? fields?.cashbookId : cashbookId)) && trans.currencyId === context.currency?.id)
-				cashTransactions.push(trans);
-		});
-
-		return cashTransactions;
+		return data.filter(trans =>
+			trans.cashbookId === (fromCashbook ? fields?.cashbookId : cashbookId) && trans.currencyId === context.currency?.id
+		);
 	};
 
 	console.log("Rendering [CAshIn.js]");
 
 	return (
 		<View style={Style.container}>
-			<Header title={`${type ? language.edit : language.add} ${language.cashIn}`} goBack={goBack} style={{ backgroundColor: Colors.green }} />
+			<Header title={`${transactionEdit ? language.edit : language.add} ${language.cashIn}`} goBack={goBack} style={{ backgroundColor: Colors.green }} />
 			<View style={Style.content}>
 				<View style={Style.form}>
 					<Input placeholder={language.amount} value={fields.amount} onChangeText={(text) => onChange(text, "amount")} keyboardType="numeric" disabled={isLoading} />
 					{/* <Input placeholder="Currency" value={globalState.currencies.find(curr => curr.id === fields.currencyId).code} disabled={true} /> */}
 					<SelectList
-						setSelected={(val) => onChange(val, "currencyId")} 
+						setSelected={(val) => onChange(Number(val), "currencyId")} 
 						data={fields.currenciesData}
-						save={context.currency?.code}
+						// save={context.currency?.code}
+						save={"key"}
 						search={false}
 						placeholder={context.currency?.code}
 						boxStyles={Style.dropDown}
-						dropdownStyles={Style.dropdopMenu}
+						dropdownStyles={Style.dropdownMenu}
 						disabled={isLoading}
 						keyboardShouldPersistTaps="handled"
 					/>
@@ -439,7 +663,7 @@ const CashIn = (props) =>
 					<Input placeholder={language.profit} value={fields.profit} onChangeText={(text) => onChange(text, "profit")} keyboardType="numeric" disabled={isLoading} />
 					<Input placeholder={language.information} value={fields.information} onChangeText={(text) => onChange(text, "information")} type="textarea" disabled={isLoading} />
 
-					<Button style={Style.submit} onPress={submitHandler} isLoading={isLoading} disabled={isLoading}>{language.submit}</Button>
+					<Button style={Style.submit} onPress={submitHandler} isLoading={isLoading} disabled={isLoading}>{transactionEdit ? language.edit : language.submit}</Button>
 
 				</View>
 			</View>

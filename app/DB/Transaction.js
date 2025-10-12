@@ -1,4 +1,4 @@
-import {db} from './index'
+import { db } from './index';
 
 const createTransaction = async (_id, amount, profit, information, currencyId, cashbookId, type, dateTime, isReceivedMobile, photo) => {
   try {
@@ -6,7 +6,11 @@ const createTransaction = async (_id, amount, profit, information, currencyId, c
           'INSERT INTO transactions (_id, amount, profit, information, currencyId, cashbookId, type, dateTime, isReceivedMobile, photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           [_id, amount, profit, information, currencyId, cashbookId, type, dateTime, isReceivedMobile, photo]
       );
+      // I DO THIS CODE BECAUSE WE NEED THE NEW OFFLINE DATABASE TRANSACTION ID
+      const [res] = await db.executeSql('SELECT * FROM transactions WHERE _id = ?', [_id]);
+      const newTransaction = res.rows.item(0);
       console.log('Transaction created successfully');
+      return newTransaction;
   } catch (error) {
       console.error('Error creating transaction:', error);
   }

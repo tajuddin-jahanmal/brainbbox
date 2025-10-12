@@ -2,7 +2,7 @@ import { useIsFocused } from "@react-navigation/core";
 import * as FileSystem from 'expo-file-system';
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
 import DatePicker from "react-native-date-picker";
 import { DataProvider, LayoutProvider, RecyclerListView } from "recyclerlistview";
@@ -60,6 +60,7 @@ const CustomerProfile = (props) =>
         profit: 0
     });
     const isRTL = language.isRtl;
+	const openRowRef = useRef(null);
     const paginateDataLength = 15;
     const lastIndex = fields.currentPage * paginateDataLength;
     // const [selectedDate, setSelectedDate] = useState(new Date());
@@ -101,6 +102,7 @@ const CustomerProfile = (props) =>
 				const cashbookUser = globalState.customers?.find(customer => customer.id || customer.summary[0].cashbookId === cashbookId);
 				const offlineTransactions = await TransactionDB.getTransactions();
 				const offlineTransactionsByDate = await TransactionDB.transByDateAndcashbbokId("", "", cashbookId, context.currency?.id, "custom");
+				
 				try {
 					if (!cashbookId)
 						return Alert.alert("Info!", "No Cashbook Selected!");
@@ -548,6 +550,17 @@ const CustomerProfile = (props) =>
 		if (fields.currentPage !== 1)
 			onChange(fields.currentPage - 1, "currentPage");
 	}
+
+	const handleRowOpen = (ref) => {
+		if (openRowRef.current && openRowRef.current !== ref) {
+			openRowRef.current.close();     // close previously open row
+		}
+		openRowRef.current = ref;
+	};
+	const handleRowClose = (ref) => {
+		if (openRowRef.current === ref) openRowRef.current = null;
+	};
+	const closeAnyOpen = () => openRowRef.current?.close();
 	
 	const NORMAL = "NORMAL";
 	
@@ -584,6 +597,10 @@ const CustomerProfile = (props) =>
 				// deleteHandler={() => deleteAlertHandler(item)}
 				// delete={true}
 				runningBalance={true}
+				swipeable={true}
+				onOpen={handleRowOpen}
+				onClose={handleRowClose}
+				navigation={props.navigation}
 			/>
 
 			// <Card style={Style.card} onPress={() => onChange({visible: true, data: item}, "transactionModal")}>
@@ -714,6 +731,7 @@ const CustomerProfile = (props) =>
 						dataProvider={dataProvider}
 						layoutProvider={layoutProvider}
 						rowRenderer={rowRenderer}
+						// onScroll={closeAnyOpen}
 						renderFooter={() => (
 							<>
 								{fields.totalDataLength >= 16 && <View style={Style.paginateCardContainer}>

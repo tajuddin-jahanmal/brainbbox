@@ -1,4 +1,4 @@
-import {db} from './index'
+import { db } from './index';
 
 
 const createQueueEntry = async (queryType, localId, tableName, data, serverId = null) => {
@@ -35,6 +35,18 @@ const findQueueEntrie = async (localId) => {
   }
 };
 
+const updateQueueEntry = async (id, queryType, localId, tableName, data, serverId = null) => {
+  try {
+    await db.executeSql(
+      'UPDATE queue SET data = ?, queryType = ?, serverId = ?, tableName = ?, localId = ? WHERE id = ?',
+      [data, queryType, serverId, tableName, localId, id]
+    );
+    console.log('Queue entry updated successfully');
+  } catch (error) {
+    console.error('Error updating queue entry:', error);
+  }
+};
+
 const deleteQueueEntry = async (id) => {
   try {
       await db.executeSql('DELETE FROM queue WHERE id = ?', [id]);
@@ -60,6 +72,7 @@ export default {
   createQueueEntry,
   getQueueEntries,
   findQueueEntrie,
+  updateQueueEntry,
   deleteQueueEntry,
   clearQueue
 }

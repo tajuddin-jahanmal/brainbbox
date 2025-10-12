@@ -521,6 +521,47 @@ const Home = (props) =>
 						}
 
 						break;
+					case "edit":
+						try {
+							if (q.tableName === "transactions")
+							{
+								const data = JSON.parse(q.data);
+								let requestData = {
+									amount: Number.parseInt(data.amount),
+									profit: Number.parseInt(data.profit),
+									currencyId: data.currencyId,
+									information: data.information,
+									providerId: context.user.id,
+									cashbookId: data.cashbookId,
+									dateTime: data.dateTime,
+									type: data.type,
+									isReceivedMobile: data.isReceivedMobile,
+								}
+
+								const response = await fetch(serverPath("/transaction"), {
+									method: "PUT",
+									headers: {
+										"Content-Type": "Application/JSON",
+									},
+									body: JSON.stringify(requestData)
+								});
+								const objData = await response.json();
+								if (objData.status === "success")
+								{
+									Queue.deleteQueueEntry(q.id);
+								}
+								if (objData.status === "failure")
+									Alert.alert("Info!", objData.message)
+							}
+
+							setIsLoading(false);
+						} catch (error) {
+							console.log("catch Home page upload Data (edit transaction): ", error);
+							setIsLoading(false);
+							Alert.alert("Info!", error.message);
+							return;
+						}
+						break;
 					case "delete":
 						try {
 							if (q.tableName === "transactions")
