@@ -27,7 +27,7 @@ import SortData from "../../../utils/SortData";
 import GetResponsiveFontSize from "../../../utils/TransactionFontSizeManager";
 import Style from "./Style";
 
-const CustomerProfile = (props) =>
+const CustomerTransactions = (props) =>
 {
     const isFocused = useIsFocused();
     const initState = {
@@ -624,7 +624,7 @@ const CustomerProfile = (props) =>
 		)
 	}
 
-	console.log("Rendering [customerProfile.js]", isFocused);
+	console.log("Rendering [CustomerTransactions.js]", isFocused);
 // const handleIOSDateSelection = () => {
 //     // Use the current selected date and close the modal
 //     dateChanger({ type: "set" }, selectedDate);
@@ -785,4 +785,4 @@ const CustomerProfile = (props) =>
 	) : null
 };
 
-export default CustomerProfile;
+export default CustomerTransactions;

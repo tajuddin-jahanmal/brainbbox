@@ -26,7 +26,7 @@ import { fromAndToDateMaker } from "../../utils/dateMaker";
 import { balanceSheetReportHTML, customerReportHTML, dailyReportHTML } from "../../utils/ReportsHTML";
 import SortData from "../../utils/SortData";
 
-const General = (props) =>
+const Setting = (props) =>
 {
     const { goBack, navigate } = props.navigation;
     const [globalState] = useStore();
@@ -365,7 +365,7 @@ const General = (props) =>
 
     return (
         <View style={Style.container}>
-            <Header title={language.general} noBack />
+            <Header title={language.setting} noBack />
             <ScrollView>
                 <View style={Style.content}>
                     {/* Android Date Picker */}
@@ -426,8 +426,8 @@ const General = (props) =>
 
                     {
                         !context.isGuest && <ArrowCardDropdown
-                            title={language.deleteAccount}
-                            cardHandler={() => navigate("DeleteAccount")}
+                            title={language.accountDeletion}
+                            cardHandler={() => navigate("AccountDeletion")}
                         />
                     }
 
@@ -463,9 +463,9 @@ const styles = {
     },
 };
 
-export default General;
+export default Setting;
 
-export const GeneralOptions = (nav) =>
+export const SettingOptions = (nav) =>
 {
     return {
         tabBarIcon: (tabInfo) => (

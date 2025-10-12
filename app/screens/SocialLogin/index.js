@@ -23,7 +23,7 @@ import Style from "./Style";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const LoginWithFG = (props) => {
+const SocialLogin = (props) => {
   const [globalState, dispatch] = useStore();
   const context = useContext(ExchangeMoneyContext);
   const [token, setToken] = useState("");
@@ -428,4 +428,4 @@ const LoginWithFG = (props) => {
   );
 };
 
-export default LoginWithFG;
+export default SocialLogin;

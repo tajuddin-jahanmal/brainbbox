@@ -10,7 +10,7 @@ import language from "../../localization";
 import { mainServerPath } from '../../utils/serverPath';
 import Style from "./Style";
 
-const DeleteAccount = (props) =>
+const AccountDeletion = (props) =>
 {
     const isFocused = useIsFocused()
     const initState = {
@@ -104,7 +104,7 @@ const DeleteAccount = (props) =>
 
     return isFocused ? (
         <View style={Style.container}>
-            <Header title={language.deleteAccount} goBack={goBack} />
+            <Header title={language.accountDeletion} goBack={goBack} />
             <View style={Style.content}>
                 <View style={Style.form}>
                     <Input placeholder={language.firstName} value={fields.firstName} onChangeText={(text) => onChange(text, "firstName")}  disabled={true}/>
@@ -129,4 +129,4 @@ const DeleteAccount = (props) =>
     ) : null
 };
 
-export default DeleteAccount;
+export default AccountDeletion;

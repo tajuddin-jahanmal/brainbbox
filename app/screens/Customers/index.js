@@ -150,7 +150,7 @@ const Customers = (props) =>
 	const rowRenderer = (type, item) =>
 	{
 		return (
-			<Card style={Style.card} onPress={() => navigate("CustomerProfile", { cashbookId: item?.summary[0]?.cashbookId || item?._id || item?.id, customerName: makeCustomerName(item), fromCashbook: true })}>
+			<Card style={Style.card} onPress={() => navigate("CustomerTransactions", { cashbookId: item?.summary[0]?.cashbookId || item?._id || item?.id, customerName: makeCustomerName(item), fromCashbook: true })}>
 				<View style={{width: "100%"}}>
 					<View
 						style={{...Style.flexRow, ...{...isRTL && {justifyContent: "flex-end"}}}}
@@ -212,7 +212,7 @@ const Customers = (props) =>
 
 				{/* {
 					dataProvider._data.map((item, index) => (
-						<Card style={Style.card} key={index} onPress={() => navigate("CustomerProfile", { cashbookId: item?.summary[0]?.cashbookId || item?._id || item?.id, customerName: makeCustomerName(item), fromCashbook: true })}>
+						<Card style={Style.card} key={index} onPress={() => navigate("CustomerTransactions", { cashbookId: item?.summary[0]?.cashbookId || item?._id || item?.id, customerName: makeCustomerName(item), fromCashbook: true })}>
 							<View style={{width: "100%"}}>
 								<View
 									style={{...Style.flexRow, ...{...isRTL && {justifyContent: "flex-end"}}}}
@@ -353,7 +353,7 @@ const Customers = (props) =>
 	// const rowRenderer = (type, item) =>
 	// {
 	// 	return (
-	// 		<Card style={Style.card} onPress={() => navigate("CustomerProfile", { cashbookId: item?.summary[0]?.cashbookId || item?._id || item?.id, customerName: makeCustomerName(item), dailyTrans: true })}>
+	// 		<Card style={Style.card} onPress={() => navigate("CustomerTransactions", { cashbookId: item?.summary[0]?.cashbookId || item?._id || item?.id, customerName: makeCustomerName(item), dailyTrans: true })}>
 	// 			<View style={Style.flexRow}>
 	// 				<Text>Customer: </Text>
 	// 				<Text numberOfLines={1}>{makeCustomerName(item)}</Text>
