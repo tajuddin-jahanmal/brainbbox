@@ -236,6 +236,7 @@ const CashBook = (props) =>
 			<Transaction
 				item={item}
 				onPress={() => transactionHandler(item)}
+				navigation={props.navigation}
 			/>
 		)
 	}

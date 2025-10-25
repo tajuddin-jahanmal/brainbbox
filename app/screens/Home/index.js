@@ -416,6 +416,8 @@ const Home = (props) =>
 			setIsLoading(true);
 			offlineQueue.forEach(async (q) =>
 			{
+				console.log(q, 'q');
+				
 				switch (q.queryType) {
 					case "insert":
 						try {
@@ -526,7 +528,8 @@ const Home = (props) =>
 							if (q.tableName === "transactions")
 							{
 								const data = JSON.parse(q.data);
-								let requestData = {
+								let transaction = {
+									id: data._id || data.id,
 									amount: Number.parseInt(data.amount),
 									profit: Number.parseInt(data.profit),
 									currencyId: data.currencyId,
@@ -537,13 +540,14 @@ const Home = (props) =>
 									type: data.type,
 									isReceivedMobile: data.isReceivedMobile,
 								}
+								const transactionClone = {...transaction};
 
 								const response = await fetch(serverPath("/transaction"), {
 									method: "PUT",
 									headers: {
 										"Content-Type": "Application/JSON",
 									},
-									body: JSON.stringify(requestData)
+									body: JSON.stringify({...transactionClone, providerId: context?.user?.id})
 								});
 								const objData = await response.json();
 								if (objData.status === "success")

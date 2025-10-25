@@ -115,18 +115,20 @@ const CashIn = (props) =>
 	// IN EDIT HANDLER I DON'T DID THE CODE FOR SELFCASH BECAUSE NOW WE DON'T USE SELFCASH
 	const editHandler = async () =>
 	{
+		// OFFLINE EDIT, CURRENCY CHANGE IN EDIT WANT SOME WORK
 		if (context.isGuest) {
 			// NOW THE GUEST HAS ONLY ONE CURRENCY IF GUEST HAS MORE CURRENCIES THE CODE SHOULD BE DEVELOPE.
 			return transactionEditManager();
 		}
-
+		
 		if (!context.isConnected)
-			return transactionEditManager("offline", queueTransaction);
+			return Alert.alert(language.info, "You are offline please come online");
+			// return transactionEditManager("offline");
 
 		transactionEditManager("online");
 	}
 
-	const transactionEditManager = async (mode, offlineTransaction) =>
+	const transactionEditManager = async (mode) =>
 	{
 		const transactionsClone = [...globalState.transactions];
 		let transaction;
@@ -172,15 +174,27 @@ const CashIn = (props) =>
 		transaction.amount = Number(fields.amount);
 		transaction.profit = Number(fields.profit);
 		transaction.currencyId = fields.currencyId;
+		transaction.type = true;
+		transaction.isReceivedMobile = transaction.isReceivedMobile ? true : false;
 		transaction.information = fields.information;
+		const transactionClone = {...transaction};
+		transactionClone.id = transactionClone._id || transactionClone.id;
+		delete transactionClone?._id;
+		delete transactionClone?.photo;
+		delete transactionClone?.runningBalance;
 
 		if (mode === "offline")
 		{
 			const offlineQueue = await Queue.getQueueEntries();
 			const offlineQueueClone = [...offlineQueue];
+
 			if (offlineQueueClone.length >= 1)
 			{
-				const queueTransaction = offlineQueueClone.find(que => JSON.parse(que.data).cashbookId === cashbookId);
+				const queueTransaction = offlineQueueClone.find(que => {
+					const data = JSON.parse(que.data);
+					return (data?._id === transactionId?._id) || (data?.id === transactionId?.id);
+				});
+				
 				if (queueTransaction)
 				{
 					queueTransaction.data.amount = transaction.amount;
@@ -188,12 +202,16 @@ const CashIn = (props) =>
 					queueTransaction.data.currencyId = transaction.currencyId;
 					queueTransaction.data.information = transaction.information;
 					Queue.updateQueueEntry(queueTransaction.id, "edit", transaction.id, "transactions", JSON.stringify(transaction), transaction?._id);
+					transactionDataEditSetter(findCust, transaction, cloneCustomers, transactionsClone, cashBookIndex);
 				} else {
 					Queue.createQueueEntry("edit", transaction.id, "transactions", JSON.stringify(transaction), transaction?._id);
+					transactionDataEditSetter(findCust, transaction, cloneCustomers, transactionsClone, cashBookIndex);
 				}
 			} else {
 				Queue.createQueueEntry("edit", transaction.id, "transactions", JSON.stringify(transaction), transaction?._id);
+				transactionDataEditSetter(findCust, transaction, cloneCustomers, transactionsClone, cashBookIndex);
 			}
+			return;
 		}
 		if (mode === "online")
 		{
@@ -204,44 +222,12 @@ const CashIn = (props) =>
 					headers: {
 						"Content-Type": "Application/JSON",
 					},
-					body: JSON.stringify(transaction)
+					body: JSON.stringify({...transactionClone, providerId: context?.user?.id})
 				});
 		
 				const objData = await response.json();
 				if (objData.status === "success")
-				{
-					setIsLoading(false);
-					Customers.updateCustomer(
-						findCust.id,
-						findCust.firstName,
-						findCust.lastName,
-						findCust.countryCode,
-						findCust.phone,
-						findCust.email,
-						JSON.stringify(cloneCustomers[cashBookIndex].summary),
-						findCust.active,
-						findCust.userId
-					);
-					TransactionDB.updateTransaction(
-						transaction.id,
-						transaction._id,
-						transaction.amount,
-						transaction.profit,
-						transaction.information,
-						transaction.currencyId,
-						transaction.cashbookId,
-						transaction.type,
-						transaction.dateTime,
-						transaction.isReceivedMobile,
-						transaction.photo,
-					);
-
-					dispatch("setCustomers", cloneCustomers);
-					dispatch("setTransactions", transactionsClone);
-					showEditToast();
-					setFields(initState);
-					goBack();
-				}
+					return transactionDataEditSetter(findCust, transaction, cloneCustomers, transactionsClone, cashBookIndex);
 		
 				if (objData.status === "failure")
 				{
@@ -256,6 +242,13 @@ const CashIn = (props) =>
 			return;
 		}
 
+		// WHEN THE TRANSACTION IS NEW CREATED IT LOOKS LIKE (f1S0mZ3CNTlT transaction.id) (undefined transaction._id)
+		transactionDataEditSetter(findCust, transaction, cloneCustomers, transactionsClone, cashBookIndex);
+		return;
+	}
+	const transactionDataEditSetter = async (findCust, transaction, cloneCustomers, transactionsClone, cashBookIndex) =>
+	{
+		setIsLoading(false);
 		Customers.updateCustomer(
 			findCust.id,
 			findCust.firstName,
@@ -268,7 +261,6 @@ const CashIn = (props) =>
 			findCust.userId
 		);
 
-		// WHEN THE TRANSACTION IS NEW CREATED IT LOOKS LIKE (f1S0mZ3CNTlT transaction.id) (undefined transaction._id)
 		TransactionDB.updateTransaction(
 			transaction.id,
 			transaction._id,
@@ -592,7 +584,7 @@ const CashIn = (props) =>
 				<View style={Style.form}>
 					<Input placeholder={language.amount} value={fields.amount} onChangeText={(text) => onChange(text, "amount")} keyboardType="numeric" disabled={isLoading} />
 					{/* <Input placeholder="Currency" value={globalState.currencies.find(curr => curr.id === fields.currencyId).code} disabled={true} /> */}
-					<SelectList
+					{!transactionEdit && <SelectList
 						setSelected={(val) => onChange(Number(val), "currencyId")} 
 						data={fields.currenciesData}
 						// save={context.currency?.code}
@@ -603,7 +595,7 @@ const CashIn = (props) =>
 						dropdownStyles={Style.dropdownMenu}
 						disabled={isLoading}
 						keyboardShouldPersistTaps="handled"
-					/>
+					/>}
 
 					{/* {fromCashbook && (
 						<SelectList

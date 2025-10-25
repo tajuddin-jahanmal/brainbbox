@@ -551,6 +551,15 @@ const CustomerTransactions = (props) =>
 			onChange(fields.currentPage - 1, "currentPage");
 	}
 
+	const editHandler = (item) =>
+	{
+		navigate(item.type ? "CashIn" : "CashOut", {
+			cashbookId: item.cashbookId,
+			transactionId: {_id: item?._id, id: item?.id},
+			transactionEdit: true
+		});
+	}
+
 	const handleRowOpen = (ref) => {
 		if (openRowRef.current && openRowRef.current !== ref) {
 			openRowRef.current.close();     // close previously open row
@@ -597,9 +606,9 @@ const CustomerTransactions = (props) =>
 				// deleteHandler={() => deleteAlertHandler(item)}
 				// delete={true}
 				runningBalance={true}
-				swipeable={true}
-				onOpen={handleRowOpen}
-				onClose={handleRowClose}
+				// swipeable={true}
+				// onOpen={handleRowOpen}
+				// onClose={handleRowClose}
 				navigation={props.navigation}
 			/>
 
@@ -770,6 +779,8 @@ const CustomerTransactions = (props) =>
 				onDismiss={() => onChange({visible: false, data: {}}, "transactionModal")}
 				deleteHandler={() => deleteAlertHandler(fields.transactionModal.data)}
 				delete={true}
+				editHandler={() => editHandler(fields.transactionModal.data)}
+				edit={true}
 			/>
 			<ReminderModal
 				visible={fields.reminderModal.visible}

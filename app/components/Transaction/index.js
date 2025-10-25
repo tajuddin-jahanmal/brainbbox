@@ -6,7 +6,6 @@ import GetResponsiveFontSize from "../../utils/TransactionFontSizeManager";
 import Card from "../Card";
 import Style from "./Style";
 
-// const Transaction = (props, {item, navigation, swipeable, onOpen, onClose, runningBalance, deleteHandler}) =>
 const Transaction = (props) =>
 {
     const { navigate } = props.navigation;
@@ -47,8 +46,8 @@ const Transaction = (props) =>
 			overshootLeft={false}
 			rightThreshold={props?.swipeable && 20}
 			friction={props?.swipeable && 2.5}
-			onSwipeableOpen={() => props?.onOpen(swipeRef.current)}
-			onSwipeableClose={() => props?.onClose(swipeRef.current)}
+			onSwipeableOpen={() => props?.swipeable && props?.onOpen(swipeRef.current)}
+			onSwipeableClose={() => props?.swipeable && props?.onClose(swipeRef.current)}
 		>
 			<Card {...props} style={Style.card}>
 				{/* <View style={Style[item.type ? "dateAmount Container" : "dateAmountContainer2"]}> */}

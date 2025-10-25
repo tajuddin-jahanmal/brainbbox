@@ -53,6 +53,7 @@ const TransactionModal = (props) =>
 
                         <View style={Style.buttonsContainer}>
                             <Button style={Style.dismiss} onPress={props.onDismiss}>{language.dismiss}</Button>
+                            {props.edit && <Button style={Style.edit} onPress={() => { props?.editHandler(); props.onDismiss()}}>{language.edit}</Button>}
                             {props.delete && <Button style={Style.delete} onPress={() => { props?.deleteHandler(); props.onDismiss()}}>{language.delete}</Button>}
                         </View>
                     </Card>
