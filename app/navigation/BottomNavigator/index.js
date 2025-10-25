@@ -3,9 +3,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Colors, { isAndroid } from "../../constant";
 import CashBook, { CashBookOptions } from "../../screens/CashBook";
 import AddCustomer, { AddCustomerOptions } from "../../screens/Customers/AddCustomer";
-import General, { GeneralOptions } from "../../screens/General";
 import Home, { HomeOptions } from "../../screens/Home";
 import Opposite, { OppositeOptions } from "../../screens/Opposite";
+import Setting, { SettingOptions } from "../../screens/Setting";
 
 const Tab = createBottomTabNavigator();
 
@@ -34,7 +34,7 @@ const BottomNavigator = () =>
             <Tab.Screen name="AddCustomer" component={AddCustomer} options={AddCustomerOptions} />
             <Tab.Screen name="CashBook" component={CashBook} options={CashBookOptions} />
             <Tab.Screen name="Opposite" component={Opposite} options={OppositeOptions} />
-            <Tab.Screen name="General" component={General} options={GeneralOptions} />
+            <Tab.Screen name="Setting" component={Setting} options={SettingOptions} />
         </Tab.Navigator>
     );
 };

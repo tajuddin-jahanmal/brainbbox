@@ -222,6 +222,7 @@ const OppositeTransactions = (props) =>
 				item={item}
 				onPress={() => onChange({visible: true, data: item}, "transactionModal")}
 				runningBalance={true}
+				navigation={props.navigation}
 			/>
 
 			// <Card style={Style.card} onPress={() => onChange({visible: true, data: item}, "transactionModal")}>

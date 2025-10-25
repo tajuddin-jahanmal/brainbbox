@@ -2,7 +2,7 @@ import { useIsFocused } from "@react-navigation/core";
 import * as FileSystem from 'expo-file-system';
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
 import DatePicker from "react-native-date-picker";
 import { DataProvider, LayoutProvider, RecyclerListView } from "recyclerlistview";
@@ -27,7 +27,7 @@ import SortData from "../../../utils/SortData";
 import GetResponsiveFontSize from "../../../utils/TransactionFontSizeManager";
 import Style from "./Style";
 
-const CustomerProfile = (props) =>
+const CustomerTransactions = (props) =>
 {
     const isFocused = useIsFocused();
     const initState = {
@@ -60,6 +60,7 @@ const CustomerProfile = (props) =>
         profit: 0
     });
     const isRTL = language.isRtl;
+	const openRowRef = useRef(null);
     const paginateDataLength = 15;
     const lastIndex = fields.currentPage * paginateDataLength;
     // const [selectedDate, setSelectedDate] = useState(new Date());
@@ -101,6 +102,7 @@ const CustomerProfile = (props) =>
 				const cashbookUser = globalState.customers?.find(customer => customer.id || customer.summary[0].cashbookId === cashbookId);
 				const offlineTransactions = await TransactionDB.getTransactions();
 				const offlineTransactionsByDate = await TransactionDB.transByDateAndcashbbokId("", "", cashbookId, context.currency?.id, "custom");
+				
 				try {
 					if (!cashbookId)
 						return Alert.alert("Info!", "No Cashbook Selected!");
@@ -548,6 +550,26 @@ const CustomerProfile = (props) =>
 		if (fields.currentPage !== 1)
 			onChange(fields.currentPage - 1, "currentPage");
 	}
+
+	const editHandler = (item) =>
+	{
+		navigate(item.type ? "CashIn" : "CashOut", {
+			cashbookId: item.cashbookId,
+			transactionId: {_id: item?._id, id: item?.id},
+			transactionEdit: true
+		});
+	}
+
+	const handleRowOpen = (ref) => {
+		if (openRowRef.current && openRowRef.current !== ref) {
+			openRowRef.current.close();     // close previously open row
+		}
+		openRowRef.current = ref;
+	};
+	const handleRowClose = (ref) => {
+		if (openRowRef.current === ref) openRowRef.current = null;
+	};
+	const closeAnyOpen = () => openRowRef.current?.close();
 	
 	const NORMAL = "NORMAL";
 	
@@ -584,6 +606,10 @@ const CustomerProfile = (props) =>
 				// deleteHandler={() => deleteAlertHandler(item)}
 				// delete={true}
 				runningBalance={true}
+				// swipeable={true}
+				// onOpen={handleRowOpen}
+				// onClose={handleRowClose}
+				navigation={props.navigation}
 			/>
 
 			// <Card style={Style.card} onPress={() => onChange({visible: true, data: item}, "transactionModal")}>
@@ -607,7 +633,7 @@ const CustomerProfile = (props) =>
 		)
 	}
 
-	console.log("Rendering [customerProfile.js]", isFocused);
+	console.log("Rendering [CustomerTransactions.js]", isFocused);
 // const handleIOSDateSelection = () => {
 //     // Use the current selected date and close the modal
 //     dateChanger({ type: "set" }, selectedDate);
@@ -714,6 +740,7 @@ const CustomerProfile = (props) =>
 						dataProvider={dataProvider}
 						layoutProvider={layoutProvider}
 						rowRenderer={rowRenderer}
+						// onScroll={closeAnyOpen}
 						renderFooter={() => (
 							<>
 								{fields.totalDataLength >= 16 && <View style={Style.paginateCardContainer}>
@@ -752,6 +779,8 @@ const CustomerProfile = (props) =>
 				onDismiss={() => onChange({visible: false, data: {}}, "transactionModal")}
 				deleteHandler={() => deleteAlertHandler(fields.transactionModal.data)}
 				delete={true}
+				editHandler={() => editHandler(fields.transactionModal.data)}
+				edit={true}
 			/>
 			<ReminderModal
 				visible={fields.reminderModal.visible}
@@ -767,4 +796,4 @@ const CustomerProfile = (props) =>
 	) : null
 };
 
-export default CustomerProfile;
+export default CustomerTransactions;

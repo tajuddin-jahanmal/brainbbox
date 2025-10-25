@@ -34,7 +34,7 @@ const Login = (props) =>
 
 	function navigateFunction () {
 		context.setNewState(true, "localAuth");
-		// navigate("LoginWithFG") // i comment this becuase then in context the localAuth is set to true they auto navigate to LoginWithFG
+		// navigate("SocialLogin") // i comment this becuase then in context the localAuth is set to true they auto navigate to SocialLogin
 	}
 
 
@@ -46,7 +46,7 @@ const Login = (props) =>
 	// 	if (isCorrect.success)
 	// 	{
 	// 		context.setNewState(true, "localAuth");
-	// 		navigate("LoginWithFG")
+	// 		navigate("SocialLogin")
 	// 	}
 	// };
 

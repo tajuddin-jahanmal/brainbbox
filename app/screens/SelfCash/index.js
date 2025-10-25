@@ -19,6 +19,8 @@ import SortData from "../../utils/SortData";
 import serverPath from "../../utils/serverPath";
 import Style from "./Style";
 
+// WE DON'T DID THE TRANSACTION UPDATE CODE FOR SELFCASH
+
 const SelfCash = (props) =>
 {
 	const isFocused = useIsFocused()

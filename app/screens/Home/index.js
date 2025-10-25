@@ -416,6 +416,8 @@ const Home = (props) =>
 			setIsLoading(true);
 			offlineQueue.forEach(async (q) =>
 			{
+				console.log(q, 'q');
+				
 				switch (q.queryType) {
 					case "insert":
 						try {
@@ -520,6 +522,49 @@ const Home = (props) =>
 							return;
 						}
 
+						break;
+					case "edit":
+						try {
+							if (q.tableName === "transactions")
+							{
+								const data = JSON.parse(q.data);
+								let transaction = {
+									id: data._id || data.id,
+									amount: Number.parseInt(data.amount),
+									profit: Number.parseInt(data.profit),
+									currencyId: data.currencyId,
+									information: data.information,
+									providerId: context.user.id,
+									cashbookId: data.cashbookId,
+									dateTime: data.dateTime,
+									type: data.type,
+									isReceivedMobile: data.isReceivedMobile,
+								}
+								const transactionClone = {...transaction};
+
+								const response = await fetch(serverPath("/transaction"), {
+									method: "PUT",
+									headers: {
+										"Content-Type": "Application/JSON",
+									},
+									body: JSON.stringify({...transactionClone, providerId: context?.user?.id})
+								});
+								const objData = await response.json();
+								if (objData.status === "success")
+								{
+									Queue.deleteQueueEntry(q.id);
+								}
+								if (objData.status === "failure")
+									Alert.alert("Info!", objData.message)
+							}
+
+							setIsLoading(false);
+						} catch (error) {
+							console.log("catch Home page upload Data (edit transaction): ", error);
+							setIsLoading(false);
+							Alert.alert("Info!", error.message);
+							return;
+						}
 						break;
 					case "delete":
 						try {

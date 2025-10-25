@@ -19,7 +19,7 @@ const AppWrapper = () =>
 export default AppWrapper;
 
 // Error Codes
-// 1: LoginWithFG Page
+// 1: SocialLogin Page
 // 2: Home Page
 // 3: AddCustomer Page
 // 4: Customers Page

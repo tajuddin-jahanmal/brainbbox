@@ -104,6 +104,8 @@ const CashOut = (props) =>
 
     const submitHandler = async () =>
     {
+        if (isLoading) return;
+
         if (fromCashbook && fields.cashbookId.length <= 0)
 			return Alert.alert(language.info, language.pleaseSelectCustomer);
 
@@ -115,7 +117,8 @@ const CashOut = (props) =>
             information: fields.information,
             providerId: context.user.id,
 			cashbookId: (fromCashbook ? fields.cashbookId : cashbookId),
-            dateTime: new Date().toString(),
+            // dateTime: new Date().toString(),
+            dateTime: new Date().toISOString(),
             type: fields.type,
 			isReceivedMobile: true,
         };
@@ -164,8 +167,8 @@ const CashOut = (props) =>
             if (context.isGuest)
             {
                 delete requestData.providerId;
-                requestData.amount = Number.parseInt(requestData.amount);
-				requestData.profit = Number.parseInt(requestData.profit);
+                requestData.amount = Number(requestData.amount);
+				requestData.profit = Number(requestData.profit);
                 requestData.id = idGenerator();
 
                 submitedDataHandler({data: requestData});
@@ -176,8 +179,8 @@ const CashOut = (props) =>
             {
                 delete requestData.providerId;
                 requestData.id = idGenerator();
-                requestData.amount = Number.parseInt(requestData.amount);
-				requestData.profit = Number.parseInt(requestData.profit);
+                requestData.amount = Number(requestData.amount);
+				requestData.profit = Number(requestData.profit);
                 if (selfCash)
                     Queue.createQueueEntry("insert", requestData.id, "selfCash", JSON.stringify(requestData), null);
                 else
@@ -195,8 +198,8 @@ const CashOut = (props) =>
                 {
                     delete requestData.providerId;
                     requestData.id = idGenerator();
-                    requestData.amount = Number.parseInt(requestData.amount);
-                    requestData.profit = Number.parseInt(requestData.profit);
+                    requestData.amount = Number(requestData.amount);
+                    requestData.profit = Number(requestData.profit);
                     if (selfCash)
                         Queue.createQueueEntry("insert", requestData.id, "selfCash", JSON.stringify(requestData), null);
                     else
@@ -237,10 +240,10 @@ const CashOut = (props) =>
 		if (selfCash)
 		{
             const data = objData.data;
-			data.amount = Number.parseInt(data.amount);
-			data.profit = Number.parseInt(data.profit);
-			data.currencyId = Number.parseInt(data.currencyId);
-			data.cashbookId = Number.parseInt(data.cashbookId);
+			data.amount = Number(data.amount);
+			data.profit = Number(data.profit);
+			data.currencyId = Number(data.currencyId);
+			data.cashbookId = Number(data.cashbookId);
 
 			if (context.currency?.id === fields.currencyId)
 				dispatch("setSelfCash", [...globalState.selfCash, data]);
@@ -256,6 +259,7 @@ const CashOut = (props) =>
                 objData.data.dateTime
             );
 
+            setFields(initState);
 			goBack();
 			// ToastAndroid.show(language.CashOutSuccessfullyAdded, ToastAndroid.SHORT);
             showToast();
@@ -272,11 +276,14 @@ const CashOut = (props) =>
         // Cashbook Transactions
 		const offlineTransactionsByDate = await TransactionDB.transByDateAndcashbbokId("", "", (fromCashbook ? fields.cashbookId : cashbookId), context.currency?.id, "custom");
 		if (context.isConnected) {
-            let oldDailyTranscations = [];
-            globalState.dailyTransactions.find(trans => {
-				if (trans.cashbookId === (fromCashbook ? fields.cashbookId : cashbookId) && trans.currencyId === context.currency?.id)
-                oldDailyTranscations.push(trans);
-            });
+            // let oldDailyTranscations = [];
+            // globalState.dailyTransactions.find(trans => {
+			// 	if (trans.cashbookId === (fromCashbook ? fields.cashbookId : cashbookId) && trans.currencyId === context.currency?.id)
+            //     oldDailyTranscations.push(trans);
+            // });
+            const oldDailyTranscations = globalState.dailyTransactions.filter( trans => 
+				trans.cashbookId === (fromCashbook ? fields?.cashbookId : cashbookId) && trans.currencyId === context.currency?.id
+			);
 
 			if (oldDailyTranscations?.length <= 0)
 			{
@@ -301,11 +308,9 @@ const CashOut = (props) =>
 	{
 		const offlineTransactions = await TransactionDB.getTransactions();
 			if (context.isConnected) {
-                let oldTranscations = [];
-                globalState.transactions.find(trans => {
-                    if (trans.cashbookId === (fromCashbook ? fields.cashbookId : cashbookId) && trans.currencyId === context.currency?.id)
-                        oldTranscations.push(trans);
-                });
+                const oldTranscations = globalState.transactions.filter( trans =>
+                    trans.cashbookId === (fromCashbook ? fields?.cashbookId : cashbookId) && trans.currencyId === context.currency?.id
+                );
 
                 if (oldTranscations.length <= 0)
                 {
@@ -358,9 +363,9 @@ const CashOut = (props) =>
 
         let In_Out_Amount = cloneSummary[summaryIndex][fields.type ? "cashIn" : "cashOut"];
         // let InAmount = cloneSummary[summaryIndex]["cashIn"];
-        let newAmount = (Number.parseInt(In_Out_Amount) + Number.parseInt(fields.amount))
-        // let newInAmount = (Number.parseInt(InAmount) - Number.parseInt(fields.amount))
-        let totalProfit = (Number.parseInt(cloneSummary[summaryIndex].totalProfit) + Number.parseInt(fields.profit))
+        let newAmount = (Number(In_Out_Amount) + Number(fields.amount))
+        // let newInAmount = (Number(InAmount) - Number(fields.amount))
+        let totalProfit = (Number(cloneSummary[summaryIndex].totalProfit) + Number(fields.profit))
         cloneSummary[summaryIndex][fields.type ? "cashIn" : "cashOut"] = newAmount;
         // cloneSummary[summaryIndex]["cashIn"] = newInAmount;
         cloneSummary[summaryIndex].totalProfit = totalProfit;
@@ -394,20 +399,17 @@ const CashOut = (props) =>
 		};
 
 
+        showToast();
+        setFields(initState);
         goBack();
         // ToastAndroid.show(language.CashOutSuccessfullyAdded, ToastAndroid.SHORT);
-        showToast();
     }
 
     const customerDataFinder = (data) =>
 	{
-		let cashTransactions = [];
-		data.find(trans => {
-			if (trans.cashbookId === ((fromCashbook ? fields.cashbookId : cashbookId)) && trans.currencyId === context.currency?.id)
-				cashTransactions.push(trans);
-		});
-
-		return cashTransactions;
+        return data.filter(trans =>
+			trans.cashbookId === (fromCashbook ? fields?.cashbookId : cashbookId) && trans.currencyId === context.currency?.id
+		);
 	};
 
     return (
@@ -418,13 +420,14 @@ const CashOut = (props) =>
                     <Input placeholder={language.amount} value={fields.amount} onChangeText={(text) => onChange(text, "amount")} keyboardType="numeric" disabled={isLoading} />
                     {/* <Input placeholder="Currency" value={globalState.currencies.find(curr => curr.id === fields.currencyId).code} disabled={true} /> */}
                     <SelectList
-						setSelected={(val) => onChange(val, "currencyId")} 
+						setSelected={(val) => onChange(Number1(val), "currencyId")} 
 						data={fields.currenciesData}
-						save={context.currency.code}
+						// save={context.currency.code}
+						save={"key"}
 						search={false}
                         placeholder={context.currency?.code}
 						boxStyles={Style.dropDown}
-						dropdownStyles={Style.dropdopMenu}
+						dropdownStyles={Style.dropdownMenu}
                         disabled={isLoading}
 					/>
 

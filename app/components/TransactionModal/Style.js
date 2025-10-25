@@ -45,6 +45,10 @@ export default StyleSheet.create({
         width: 100,
         backgroundColor: "#616380b8"
     },
+    edit: {
+        width: 100,
+        backgroundColor: "#6fc1f7ff"
+    },
     delete: {
         width: 100,
         backgroundColor: Colors.primary
