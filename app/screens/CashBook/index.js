@@ -677,7 +677,7 @@ const CashBook = (props) =>
 			
 			<View style={Style.content}>
 				{/* <Input placeholder="Search" value={fields.search} onChangeText={(text) => onChange(text, "search")} /> */}
-				<View>
+				<View style={{position: "relative", zIndex: 9999}}>
 					{
 						!fields.showTotalCashinOut &&
 						<TouchableOpacity style={Style.showTxtContainer} onPress={() => onChange(true, "showTotalCashinOut")}>

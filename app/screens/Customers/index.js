@@ -180,7 +180,7 @@ const Customers = (props) =>
 				<View>
 					<Input placeholder="Search" value={fields.search} onChangeText={(text) => onChange(text, "search")} />
 				</View>
-				<View>
+				<View style={{position: "relative", zIndex: 999999}}>
 					{
 						!fields.showTotalCashinOut &&
 						<TouchableOpacity style={Style.showTxtContainer} onPress={() => onChange(true, "showTotalCashinOut")}>

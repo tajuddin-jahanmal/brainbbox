@@ -5,6 +5,7 @@ export default StyleSheet.create({
     container: {
         // position: 'absolute',
         right: 15,
+        zIndex: 9999
     },
     thressDotContainer: {
         backgroundColor: "rgba(0, 0, 0, 0.03)",
@@ -18,6 +19,7 @@ export default StyleSheet.create({
         right: 0,
         padding: 10,
         backgroundColor: Colors.white,
+        zIndex: 9999
     },
     contentCard: {
         borderRadius: 10,
