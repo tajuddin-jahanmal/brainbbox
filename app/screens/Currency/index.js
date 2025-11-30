@@ -68,7 +68,6 @@ const Currency = (props) =>
 		dispatch("setOppositeCustomers", []);
 		dispatch("setTransactions", []);
 		dispatch("setOppositeTransactions", []);
-		dispatch("setDailyTransactions", []);
 		dispatch("setSelfCash", []);
 	}
 

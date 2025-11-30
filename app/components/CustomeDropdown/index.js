@@ -43,7 +43,6 @@ const CustomeDropdown = (props) =>
         dispatch("setOppositeCustomers", []);
         dispatch("setTransactions", []);
         dispatch("setOppositeTransactions", []);
-        dispatch("setDailyTransactions", []);
         dispatch("setSelfCash", []);
     }
 

@@ -26,7 +26,7 @@ const StackNavigator = () =>
 		context.localAuth ?
 		<Stack.Navigator screenOptions={{ headerShown: false }}>
 			{
-				context.login ?
+				context?.login ?
 				<>
 					{
 						(context.customer || context.isGuest) ?

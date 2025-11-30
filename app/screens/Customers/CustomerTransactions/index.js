@@ -14,13 +14,13 @@ import Transaction from "../../../components/Transaction";
 import TransactionModal from "../../../components/TransactionModal";
 import UpScreenLoader from '../../../components/UpScreenLoader';
 import { ScreenWidth } from "../../../constant";
-import Customers from "../../../DB/Customer";
-import Queue from "../../../DB/Queue";
+import { default as Customers } from "../../../DB/Customer";
 import TransactionDB from "../../../DB/Transaction";
+import WeeklyBalances from "../../../DB/WeeklyBalances";
 import { ExchangeMoneyContext } from "../../../ExchangeMoneyContext";
 import language from "../../../localization";
 import useStore from "../../../store/store";
-import { fromAndToDateMaker } from "../../../utils/dateMaker";
+import { fromAndToDateMaker, getWeekRange } from "../../../utils/dateMaker";
 import { customerReportHTML } from "../../../utils/ReportsHTML";
 import serverPath from "../../../utils/serverPath";
 import SortData from "../../../utils/SortData";
@@ -47,7 +47,7 @@ const CustomerTransactions = (props) =>
     const [globalState, dispatch] = useStore();
     const { customers } = globalState;
     const { goBack, navigate } = props.navigation;
-    const { cashbookId, dailyTrans, fromCashbook } = props.route.params;
+    const { cashbookId, fromCashbook } = props.route.params;
     const [dataProvider, setDataProvider] = useState(new DataProvider((r1, r2) => r1 !== r2));
     const [fields, setFields] = useState(initState);
     const [isLoading, setIsLoading] = useState(false);
@@ -77,7 +77,7 @@ const CustomerTransactions = (props) =>
     const handleDatePress = (type) => {
         // setSelectedDate(new Date());
         onChange({ visible: true, type }, "showDatePicker");
-    };
+    };	
 
     const cashbookUser = customers?.find(customer => (customer?._id || customer?.id) === cashbookId);
 
@@ -101,7 +101,7 @@ const CustomerTransactions = (props) =>
 			{
 				const cashbookUser = globalState.customers?.find(customer => customer.id || customer.summary[0].cashbookId === cashbookId);
 				const offlineTransactions = await TransactionDB.getTransactions();
-				const offlineTransactionsByDate = await TransactionDB.transByDateAndcashbbokId("", "", cashbookId, context.currency?.id, "custom");
+				const offlineTransactionsByDate = await TransactionDB.transactionByDateAndCashbookIdAndCurrencyId("", "", cashbookId, context.currency?.id, "custom");
 				
 				try {
 					if (!cashbookId)
@@ -109,52 +109,7 @@ const CustomerTransactions = (props) =>
 					if(!cashbookUser)
 						return Alert.alert("Info!", "No Cashbook Found By THis Name!")
 
-					
-					// console.log(globalState.transactions.length, "+", globalState.dailyTransactions.length);
-
 					setIsLoading(true);
-					if (dailyTrans)
-					{
-						if (globalState.dailyTransactions.length >= 1)
-						{
-							let data = customerDataFinder(globalState.dailyTransactions);
-							if (data.length >= 1)
-								return;
-						}
-
-						// if (context.isConnected)
-						// {
-						// 	const response = await fetch(serverPath("/get/transaction_by_date"), {
-						// 		method: "POST",
-						// 		headers: {
-						// 				"Content-Type": "Application/JSON",
-						// 		},
-						// 		body: JSON.stringify({ cashbookId, currencyId: context.currency.id, providerId: context.user.id })
-						// 	});
-
-						// 	const objData = await response.json();
-						// 	if (objData.status === "success" && objData.data.length > 0)
-						// 	{
-						// 		dispatch("setDailyTransactions", [...globalState.dailyTransactions, ...objData.data])
-						// 		setDataProvider(dataProvider.cloneWithRows([...paginationFunction(SortData(objData.data))]));
-						// 	}
-						// 	if (objData.status === "failure")
-						// 		Alert.alert("Info!", objData.message);
-						// } else {
-							if (offlineTransactionsByDate.length >= 1 && dataProvider._data.length <= 0)
-							{
-								let data = customerDataFinder(offlineTransactionsByDate);
-								if (data.length >= 1)
-								{
-									dispatch("setDailyTransactions", [...globalState.dailyTransactions, ...offlineTransactionsByDate]);
-									return;
-								}
-							}
-						// }
-						setIsLoading(false)
-						return;
-					}
-					
 					if (globalState.transactions.length >= 1)
 					{
 						let data = customerDataFinder(globalState.transactions);
@@ -202,8 +157,7 @@ const CustomerTransactions = (props) =>
 				}
 			}
 		})();
-	}, [globalState.transactions, globalState.dailyTransactions, fields.currentPage, isFocused]);
-	// // }, [globalState.transactions, globalState.dailyTransactions, fields.currentPage, context.isConnected]);
+	}, [globalState.transactions, fields.currentPage, isFocused]);
 
 	useEffect(() => {
 		(async () =>
@@ -274,7 +228,7 @@ const CustomerTransactions = (props) =>
 		// const toDate = new Date(fields.to.getTime() - (fields.to.getTimezoneOffset()*60*1000)).toISOString().split('T')[0];
 		const {fromDate, toDate} = fromAndToDateMaker(fields.from, fields.to);
 
-		const offlineTransactionsByDate = await TransactionDB.transByDateAndcashbbokId(fromDate, toDate, cashbookId, context.currency?.id);
+		const offlineTransactionsByDate = await TransactionDB.transactionByDateAndCashbookIdAndCurrencyId(fromDate, toDate, cashbookId, context.currency?.id);
 		let OTByDateClone = [...offlineTransactionsByDate];
 
 		let calculate = 0;
@@ -285,7 +239,7 @@ const CustomerTransactions = (props) =>
 		});
 
 		setDataProvider(dataProvider.cloneWithRows([...paginationFunction(SortData(OTByDateClone))]));
-
+		
 		return OTByDateClone;
 	}
 
@@ -301,12 +255,11 @@ const CustomerTransactions = (props) =>
 	{
 		let cashTransactions = [];
 		let calculate = 0;
-
-		data.find(trans => {
+	
+		SortData(data).reverse().find(trans => {
 			if (trans.cashbookId === cashbookId && trans.currencyId === context.currency?.id)
 			{
 				cashTransactions.push(trans);
-
 				if (trans.type) calculate += trans.amount;
 				else calculate -= trans.amount;
 				trans.runningBalance = calculate;
@@ -317,11 +270,7 @@ const CustomerTransactions = (props) =>
 			setDataProvider(dataProvider.cloneWithRows([...paginationFunction(SortData(cashTransactions))]));
 			setIsLoading(false);
 		}
-
-		// cashTransactions.reverse().forEach(transaction =>
-		// {
-		// });
-
+		
 		return SortData(cashTransactions);
 	};
 
@@ -352,55 +301,112 @@ const CustomerTransactions = (props) =>
 			if (context.isGuest)
 				return dataManager(item);
 
-			const isExist = await Queue.findQueueEntrie(item._id || item.id);
+			
 			if (!context.isConnected)
 			{
-				if (isExist.length >= 1)
-				{
-					Queue.deleteQueueEntry(isExist[0].id);
-					dataManager(item);
-					return;
-				};
+				Alert.alert("Alert", "You are offline!");
+				return
+			}
+			// const isExist = await Queue.findQueueEntrie(item._id || item.id);
+
+			// IN OFFLINE MODE TRANSACTION SHOULD DELETE BECAUSE FOR THE WEEKLY_BALANCES
+			// if (!context.isConnected)
+			// {
+			// 	if (isExist.length >= 1)
+			// 	{
+			// 		Queue.deleteQueueEntry(isExist[0].id);
+			// 		dataManager(item);
+			// 		return;
+			// 	};
 				
-				let requestData = {
-					id: (item._id || item.id),
-					amount: item.amount,
-					profit: item.profit,
-					currencyId: item.currencyId,
-					information: item.information,
-					cashbookId: item.cashbookId,
-					type: item.type,
-					dateTime: item.dateTime,
+			// 	let requestData = {
+			// 		id: (item._id || item.id),
+			// 		amount: item.amount,
+			// 		profit: item.profit,
+			// 		currencyId: item.currencyId,
+			// 		information: item.information,
+			// 		cashbookId: item.cashbookId,
+			// 		type: item.type,
+			// 		dateTime: item.dateTime,
+			// 	}
+
+			// 	Queue.createQueueEntry("delete", (item._id || item.id), "transactions", JSON.stringify(requestData), (item._id || item.id));
+			// 	dataManager(item);
+			// 	return;
+			// };
+
+			// if (isExist.length >= 1)
+			// {
+			// 	Queue.deleteQueueEntry(isExist[0].id);
+			// 	dataManager(item);
+			// 	return;
+			// };
+
+			const { weekStart, weekEnd } = getWeekRange(item.dateTime);
+			const weeklyData = await WeeklyBalances.getWeeklyBalancesByWeek(
+				context?.customer?.id,
+				context?.currency?.id,
+				new Date(weekStart).toISOString(),
+				new Date(weekEnd).toISOString()
+			);
+
+			if (weeklyData.length >= 1)
+			{
+				const weeklyDataClone = {...weeklyData[0]};
+				if (item.type) {
+					weeklyDataClone.totalCashIn -= item.amount;
+					weeklyDataClone.closingBalance -= item.amount;
+				} else {
+					weeklyDataClone.totalCashOut -= item.amount;
+					weeklyDataClone.closingBalance += item.amount;
 				}
 
-				Queue.createQueueEntry("delete", (item._id || item.id), "transactions", JSON.stringify(requestData), (item._id || item.id));
+				const success = await updateServerTransaction(item._id || item.id);
+				if (!success)
+					return;
+
+				const weekylBalanceResponse = await fetch(serverPath("/weekly_balance"), {
+					method: "PUT",
+					headers: { "Content-Type": "Application/JSON" },
+					body: JSON.stringify({
+						id: weeklyDataClone._id || weeklyDataClone.id,
+						weekStart: weeklyDataClone.weekStart,
+						weekEnd: weeklyDataClone.weekEnd,
+						openingBalance: weeklyDataClone.openingBalance,
+						totalCashIn: weeklyDataClone.totalCashIn,
+						totalCashOut: weeklyDataClone.totalCashOut,
+						closingBalance: weeklyDataClone.closingBalance,
+						providerId: context?.user?.id,
+						customerId: context?.customer?.id,
+						currencyId: context?.currency?.id,
+					}),
+				});
+				const weeklyBalanceObjData = await weekylBalanceResponse.json();
+
+				if (weeklyBalanceObjData.status === "failure")
+				{
+					console.log(weeklyBalanceObjData, "Customer Transactions Weekly Balance Update");
+					return;
+				}
+
+				await WeeklyBalances.updateWeeklyBalance(
+					weeklyDataClone.id, // this ID is from localDatabase
+					weeklyDataClone.weekStart,
+					weeklyDataClone.weekEnd,
+					weeklyDataClone.openingBalance,
+					weeklyDataClone.totalCashIn,
+					weeklyDataClone.totalCashOut,
+					weeklyDataClone.closingBalance
+				);
+
+				updateNextWeekBalance(weekEnd, weeklyDataClone.closingBalance, item);
 				dataManager(item);
+
 				return;
 			};
-
-			if (isExist.length >= 1)
-			{
-				Queue.deleteQueueEntry(isExist[0].id);
-				dataManager(item);
-				return;
-			};
-
-			const response = await fetch(serverPath("/transaction"), {
-				method: "DELETE",
-				headers: {
-					"Content-Type": "Application/JSON",
-				},
-				body: JSON.stringify({ id: (item._id || item.id), providerId: context.user.id })
-			});
 			
-			const objData = await response.json();
-			if (objData.status === "failure")
-			{
-				Alert.alert("Info!", objData.message)
-				setIsLoading(false)
-			}
-
-			if (objData.status === "success")
+			const success = await updateServerTransaction(item._id || item.id);
+			if (success)
 				dataManager(item);
 
 		} catch (error) {
@@ -408,6 +414,104 @@ const CustomerTransactions = (props) =>
 			console.log(error)
 		}
 	};
+
+	const updateServerTransaction = async (itemId) => {
+      const response = await fetch(serverPath("/transaction"), {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: itemId, providerId: context.user.id }),
+      });
+
+      const result = await response.json();
+      if (result.status === "failure")
+	{
+        Alert.alert("Info!", result.message);
+        setIsLoading(false);
+        return false;
+      }
+      return true;
+    };
+
+	const updateNextWeekBalance = async (weekEnd, newOpeningBalance, transaction) =>
+	{
+		const newest = await WeeklyBalances.getNewestWeeklyBalance(
+			context?.customer?.id,
+			context?.currency?.id
+		);
+
+		if (!newest) {
+			console.log("❌ No newest weekly balance found. Stopping.");
+			return;
+		}
+
+		const nextWeekEndDate = new Date(weekEnd);
+		nextWeekEndDate.setDate(nextWeekEndDate.getDate() + 1);
+
+		const { weekStart: nextWeekStart, weekEnd: nextWeekEnd } = getWeekRange(nextWeekEndDate);
+
+		if (new Date(nextWeekStart) > new Date(newest.weekStart)) {
+			console.log("🛑 Reached newest weekly balance. Stopping updates.");
+			return;
+		}
+
+		const nextWeeklyData = await WeeklyBalances.getWeeklyBalancesByWeek(
+			context?.customer?.id,
+			context?.currency?.id,
+			new Date(nextWeekStart).toISOString(),
+			new Date(nextWeekEnd).toISOString()
+		);
+
+		if (nextWeeklyData.length === 0) {
+			console.log("⚠️ Missing week → Skipping:", nextWeekStart);
+			return updateNextWeekBalance(nextWeekEnd, newOpeningBalance, transaction);
+		}
+
+		const weeklyDataClone = { ...nextWeeklyData[0] };
+
+		weeklyDataClone.openingBalance = newOpeningBalance;
+		// weeklyDataClone.closingBalance = weeklyDataClone.openingBalance + (weeklyDataClone.totalCashIn - weeklyDataClone.totalCashOut);
+		if (transaction.type) {
+			weeklyDataClone.closingBalance -= transaction.amount;
+		} else {
+			weeklyDataClone.closingBalance += transaction.amount;
+		}
+
+		const response = await fetch(serverPath("/weekly_balance"), {
+			method: "PUT",
+			headers: { "Content-Type": "Application/JSON" },
+			body: JSON.stringify({
+				id: weeklyDataClone._id || weeklyDataClone.id,
+				weekStart: weeklyDataClone.weekStart,
+				weekEnd: weeklyDataClone.weekEnd,
+				openingBalance: weeklyDataClone.openingBalance,
+				totalCashIn: weeklyDataClone.totalCashIn,
+				totalCashOut: weeklyDataClone.totalCashOut,
+				closingBalance: weeklyDataClone.closingBalance,
+				providerId: context?.user?.id,
+				customerId: context?.customer?.id,
+				currencyId: context?.currency?.id,
+			}),
+		});
+
+		const objData = await response.json();
+		if (objData.status === "failure") {
+			console.log("❌ Failed to update next week:", objData);
+			return;
+		}
+
+		await WeeklyBalances.updateWeeklyBalance(
+			weeklyDataClone.id, // this ID is from localDatabase
+			weeklyDataClone.weekStart,
+			weeklyDataClone.weekEnd,
+			weeklyDataClone.openingBalance,
+			weeklyDataClone.totalCashIn,
+			weeklyDataClone.totalCashOut,
+			weeklyDataClone.closingBalance
+		);
+
+		return updateNextWeekBalance(nextWeekEnd, weeklyDataClone.closingBalance, transaction);
+	};
+
 
 	const dataManager = async (item) =>
 	{
@@ -435,13 +539,8 @@ const CustomerTransactions = (props) =>
 		let ndx = transactionsClone.findIndex(per => per.id == item.id)
 		if (ndx >= 0)
 		transactionsClone.splice(ndx, 1)
-		const dailytransactionsClone = [...globalState.dailyTransactions];
-		let dailyNdx = dailytransactionsClone.findIndex(per => per.id == item.id)
-		if (dailyNdx >= 0)
-			dailytransactionsClone.splice(dailyNdx, 1);
 		dispatch("setCustomers", cloneCustomers);
 		dispatch("setTransactions", transactionsClone);
-		dispatch("setDailyTransactions", dailytransactionsClone);
 		TransactionDB.deleteTransaction(item._id || item.id);
 		const findCust = customerData.find(customer => customer._id === cashbookId);
 
@@ -464,14 +563,11 @@ const CustomerTransactions = (props) =>
 
 	const print = async () =>
 	{
-		const offlineTransactionsByDate = await TransactionDB.transByDateAndcashbbokId("", "", cashbookId, context.currency?.id, "custom");
+		const offlineTransactionsByDate = await TransactionDB.transactionByDateAndCashbookIdAndCurrencyId("", "", cashbookId, context.currency?.id, "custom");
 		let data = [];
 
 		if (fields.from && fields.to) {
 			data = await dataFinderByDate();
-		}
-		else if (dailyTrans) {
-			data = customerDataFinder(offlineTransactionsByDate);
 		} else {
 			data = customerDataFinder(globalState.transactions)
 		}
@@ -592,13 +688,14 @@ const CustomerTransactions = (props) =>
 	const deleteAlertHandler = (item) =>
 	{
 		Alert.alert(language.alert, language.doyYouWantToDeleteTransaction, [
-		{ text: language.cancel, onPress: () => { console.log("Cancled") }, style: 'cancel', },
-		{ text: language.ok, onPress: () => deleteHandler(item) },
+			{ text: language.cancel, onPress: () => { console.log("Cancled") }, style: 'cancel', },
+			{ text: language.ok, onPress: () => deleteHandler(item) },
 		]);
 	}
 
 	const rowRenderer = (type, item) =>
 	{
+		
 		return (
 			<Transaction
 				item={item}
@@ -683,18 +780,13 @@ const CustomerTransactions = (props) =>
 
 					<View style={Style.shareShowContainer}>
 						{
-							(dailyTrans && dataProvider._data.length >= 1) && <TouchableOpacity style={Style.showTxtContainer} onPress={print}>
-								<Text style={Style.showTxt}>{language.share}</Text>
-							</TouchableOpacity>
-						}
-						{
 							(!fields.showTotalCashinOut && fromCashbook && dataProvider._data.length > 0) &&
 							<TouchableOpacity style={Style.showTxtContainer} onPress={() => onChange(true, "showTotalCashinOut")}>
 								<Text style={Style.showTxt}>{language.show}</Text>
 							</TouchableOpacity>
 						}
 					</View>
-					{(!dailyTrans && fields.showTotalCashinOut) && <Card style={Style.cashInOutContainer} activeOpacity={1}>
+					{(fields.showTotalCashinOut) && <Card style={Style.cashInOutContainer} activeOpacity={1}>
 						<View style={Style.cashsContainer}>
 							{/* <View style={Style.cashInOut}>
 								<Text>{language.cashIn}</Text>
@@ -768,8 +860,8 @@ const CustomerTransactions = (props) =>
 				{/* {dataProvider._data.length >= 1 && <Button onPress={print}> <FontAwesome5 name="share" size={24} color="white"/> </Button>} */}
 
 				<View style={Style.cashsCotainer}>
-					<Button style={{...Style.cashButton, ...Style.cashInButton}} onPress={() => navigate("CashIn", { cashbookId, dailyTrans: dailyTrans ? true : false })}>{language.cashIn}</Button>
-					<Button style={Style.cashButton} onPress={() => navigate("CashOut", { cashbookId, dailyTrans: dailyTrans ? true : false })}>{language.cashOut}</Button>
+					<Button style={{...Style.cashButton, ...Style.cashInButton}} onPress={() => navigate("CashIn", { cashbookId })}>{language.cashIn}</Button>
+					<Button style={Style.cashButton} onPress={() => navigate("CashOut", { cashbookId })}>{language.cashOut}</Button>
 				</View>
 			</View>
 			<TransactionModal

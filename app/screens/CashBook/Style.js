@@ -36,12 +36,17 @@ export default StyleSheet.create({
     cashInOutContainer: {
         flexDirection: "row",
         alignItems: "center",
-        justifyContent: "space-between",
+        justifyContent: "space-around",
         // marginVertical: 10,
         zIndex: 9,
     },
+    openningText: {
+        fontSize: 12,
+        width: 60,
+        textAlign: "center",
+    },
     cashInOutContent: {
-        width: "90%",
+        // width: "90%",
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-around",
@@ -126,6 +131,7 @@ export default StyleSheet.create({
         alignItems: "center",
         columnGap: 10,
         marginTop: "auto",
+        paddingTop: 5,
     },
     cashButton: {
         width:"48.5%"

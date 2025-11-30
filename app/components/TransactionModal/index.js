@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Modal, Text, TouchableOpacity, View } from "react-native";
+import { ExchangeMoneyContext } from "../../ExchangeMoneyContext";
 import language from "../../localization";
 import Button from "../Button";
 import Card from "../Card";
@@ -8,6 +9,7 @@ import Style from "./Style";
 const TransactionModal = (props) =>
 {
 	const isRTL = language.isRtl;
+    const context = useContext(ExchangeMoneyContext);
     // console.log("Rendering [TransactionModal.js]");
 
     return (
@@ -52,9 +54,25 @@ const TransactionModal = (props) =>
                         </View>
 
                         <View style={Style.buttonsContainer}>
-                            <Button style={Style.dismiss} onPress={props.onDismiss}>{language.dismiss}</Button>
-                            {props.edit && <Button style={Style.edit} onPress={() => { props?.editHandler(); props.onDismiss()}}>{language.edit}</Button>}
-                            {props.delete && <Button style={Style.delete} onPress={() => { props?.deleteHandler(); props.onDismiss()}}>{language.delete}</Button>}
+                            <Button
+                                style={Style.dismiss}
+                                onPress={props.onDismiss}
+                            >{language.dismiss}</Button>
+
+                            {props.edit &&
+                                <Button
+                                    style={Style.edit}
+                                    onPress={() => { props?.editHandler(); props.onDismiss()}}
+                                    disabled={!context.isConnected && true}
+                                >{language.edit}</Button>
+                            }
+
+                            {props.delete &&
+                                <Button
+                                    style={Style.delete}
+                                    onPress={() => { props?.deleteHandler(); props.onDismiss()}}
+                                    disabled={!context.isConnected && true}
+                                >{language.delete}</Button>}
                         </View>
                     </Card>
                 </View>

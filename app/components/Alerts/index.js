@@ -144,10 +144,33 @@ const PrivacyPolicyAlert = (props) => {
   );
 };
 
+
+const LogoutAlert = (props) => {
+  return (
+    <SweetAlert
+      title={props?.title || language?.alert}
+      message={props?.message || language?.logoutMessage}
+      confirm={true}
+      confirmText={props?.confirmText || language?.logout}
+      onConfirm={props?.onConfirm}
+      show={props?.show}
+      // confirmButtonStyle={{ width: 50, ...props?.confirmButtonStyle }}
+      confirmButtonTextStyle={{ 
+        textAlign: 'center', 
+        ...props?.confirmButtonTextStyle 
+      }}
+      cancel={true}
+      cancelText={props?.cancelText}
+      onCancelPressed={props?.onCancel}
+      {...props}
+    />
+  );
+};
+
 export {
   AccountDeleteAlert,
   AccountDeleteProcessAlert, AddCustomerValidationAlert,
-  CashInOutValidationAlert, PrivacyPolicyAlert, TokenAlert
+  CashInOutValidationAlert, LogoutAlert, PrivacyPolicyAlert, TokenAlert
 };
 
 export default () => {};

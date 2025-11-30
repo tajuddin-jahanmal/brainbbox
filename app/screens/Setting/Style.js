@@ -27,6 +27,6 @@ export default StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: 15,
+        padding: 13,
     },
 });

@@ -9,6 +9,7 @@ import Header from "../../components/Header";
 import Input from "../../components/Input";
 import { ScreenWidth } from "../../constant";
 import CustomerDB from "../../DB/Customer";
+import OpeningBalance from "../../DB/OpeningBalance";
 import { ExchangeMoneyContext } from "../../ExchangeMoneyContext";
 import language from "../../localization";
 import useStore from "../../store/store";
@@ -103,25 +104,29 @@ const Customers = (props) =>
 	}, [globalState.customers, isFocused]);
 
 	useEffect(() => {
-		// if(globalState.customers.length > 0 && isFocused)
-		if(isFocused)
+		(async () =>
 		{
-			let cash = { cashIn: 0, cashOut: 0 };
-			globalState.customers.forEach(customer => {
-				customer.summary?.forEach(per => {
-					if(per.currencyId == context.currency?.id)
-					{
-						cash.cashIn = (cash.cashIn + per.cashIn)
-						cash.cashOut = (cash.cashOut + per.cashOut)
-					}
-				})
-			});
-			setFields(prev => ({
-				...prev,
-				totalCashInOut: { cash: cash.cashIn - cash.cashOut, cashIn: cash.cashIn, cashOut: cash.cashOut }
-			}))
-		}
-	}, [globalState.customers, context.currency, isFocused]);
+			// if(globalState.customers.length > 0 && isFocused)
+			if(isFocused)
+			{
+				const openingBalance = await OpeningBalance.getLatestOpeningBalance(context.currency.id);
+				let cash = { cashIn: 0, cashOut: 0 };
+				globalState.customers.forEach(customer => {
+					customer.summary?.forEach(per => {
+						if(per.currencyId == context.currency?.id)
+						{
+							cash.cashIn = (cash.cashIn + per.cashIn)
+							cash.cashOut = (cash.cashOut + per.cashOut)
+						}
+					})
+				});
+				setFields(prev => ({
+					...prev,
+					totalCashInOut: { cash: cash.cashIn - cash.cashOut + (openingBalance?.amount || 0), cashIn: cash.cashIn, cashOut: cash.cashOut }
+				}))
+			}
+		})();
+	}, [globalState.customers, globalState.openingBalances, context.currency, isFocused]);
 
 	const makeCustomerName = (item) => {
 		const firstName = item.customer?.firstName || item?.firstName || "";
@@ -193,7 +198,11 @@ const Customers = (props) =>
 								</View> */}
 								<View style={Style.cashInOut}>
 									<Text>{language.cash}</Text>
-									<Text style={{...Style.cashInOutMony, ...fields.totalCashInOut.cash < 0 ? Style.cashOut : Style.cashIn}}>{fields.totalCashInOut.cash} {context.currency.code}</Text>
+									<Text
+										style={{...Style.cashInOutMony, ...fields.totalCashInOut.cash < 0 ? Style.cashOut : Style.cashIn}}
+									>
+										{fields.totalCashInOut.cash} {context.currency.code}
+									</Text>
 								</View>
 								{/* <View style={Style.cashInOut}>
 									<Text>{language.cashOut}</Text>

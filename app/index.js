@@ -4,11 +4,13 @@ import AppWrapper from './AppWrapper';
 import {
   createCurrenciesTable,
   createCustomersTable,
+  createOpeningBalanceTable,
   createOppositeCustomersTable,
   createOppoTransactionsTable,
   createQueueTable,
   createSelfCashTable,
   createTransactionsTable,
+  createWeeklyBalancesTable,
   initializeDB
 } from './DB';
 import kamilStore from "./store/kamil";
@@ -22,6 +24,8 @@ initializeDB()
 .then(() => createCurrenciesTable())
 .then(() => createQueueTable())
 .then(() => createSelfCashTable())
+.then(() => createOpeningBalanceTable())
+.then(() => createWeeklyBalancesTable())
 .catch(error => console.error('Error initializing database:', error));
 
 kamilStore();

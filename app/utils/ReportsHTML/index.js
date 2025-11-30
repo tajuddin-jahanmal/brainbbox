@@ -1,7 +1,7 @@
 import Colors from "../../constant";
 
 const PLAYSTORELINK = "https://play.google.com/store/apps/details?id=com.mosaaghajahanmal.brainbbox";
-const APPSTORELINK = "https://play.google.com/store/apps/details?id=com.mosaaghajahanmal.brainbbox";
+const APPSTORELINK = "https://apps.apple.com/kr/app/brainbbox/id6749072247?l=en-GB";
 const WEBSITELINK = "https://brainbbox.com";
 
 export const customerReportHTML = (ownerFullName, data, currencyCode, forCounting, customerFullName) =>
@@ -230,8 +230,9 @@ const dateMaker = (date) =>
 	return newDate.getFullYear() + "/" + Number.parseInt(newDate.getMonth()+1) + "/" + newDate.getDate()
 }
 
-export const dailyReportHTML = (ownerFullName, data, currencyCode, sumCashs, date) =>
+export const dailyReportHTML = (ownerFullName, dailyBalance, currencyCode, date) =>
 {
+
 	const html = `<html>
 		<head>
 			<meta charset="UTF-8">
@@ -383,7 +384,8 @@ export const dailyReportHTML = (ownerFullName, data, currencyCode, sumCashs, dat
 						<span class="circle circle2"></span>
 					</div>
 					<p class="date">Daily Report of: ${new Date(date).toLocaleDateString()}</p>
-					<p class="text">Generate Date: ${new Date(new Date()).toLocaleString()}</p>
+					<p >Generate Date: ${new Date(new Date()).toLocaleString()}</p>
+					<p>Opening Balance: ${dailyBalance["openingBalance"]}</p>
 					<table>
 						<thead>
 							<tr>
@@ -395,19 +397,20 @@ export const dailyReportHTML = (ownerFullName, data, currencyCode, sumCashs, dat
 							</tr>
 						</thead>
 						<tbody>
-							${(data?.map((value, index) => (
+							${(Object.values(dailyBalance?.cashbooks)?.map((value, index, arr) => (
 								`<tr>
 									<td>${index + 1}</td>
 									<td>${value?.customer?.customer?.firstName || value?.customer?.firstName} ${value?.customer?.customer?.lastName || value?.customer?.lastName || ""}</td>
-									<td class="cashOutTd">${value.cash.cashOut}</td>
-									<td class="cashInTd">${value.cash.cashIn}</td>
+									<td class="cashOutTd">${value.totalCashOut}</td>
+									<td class="cashInTd">${value.totalCashIn}</td>
 									<td>${currencyCode}</td>
 								</tr>
-								${index === data.length - 1 ? `
+
+								${index === Object.values(dailyBalance?.cashbooks).length - 1 ? `
 								<tr>
-									<td class="fontBold" colspan="2">Total</td>
-									<td class="cashOutTd fontBold">${sumCashs.cashOut}</td>
-									<td class="cashInTd fontBold">${sumCashs.cashIn}</td>
+									<td class="fontBold" colspan="2">Closing Balance: ${dailyBalance.closingBalance}</td>
+									<td class="cashOutTd fontBold">${dailyBalance.totalCashOut}</td>
+									<td class="cashInTd fontBold">${dailyBalance.totalCashIn}</td>
 									<td class="fontBold">${currencyCode}</td>
 								</tr>` : ""}
 							`

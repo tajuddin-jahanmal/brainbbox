@@ -5,7 +5,7 @@ import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/core";
 import { useNavigation } from "expo-router";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import Button from "../../components/Button";
 import Card from "../../components/Card";
@@ -15,6 +15,7 @@ import TokenModal from "../../components/TokenModal";
 import Colors, { isAndroid } from "../../constant";
 import Currency from "../../DB/Currency";
 import Customers from "../../DB/Customer";
+import OpeningBalance from '../../DB/OpeningBalance';
 import Queue from "../../DB/Queue";
 import SelfCash from "../../DB/SelfCash";
 import Transaction from "../../DB/Transaction";
@@ -38,6 +39,7 @@ const Home = (props) =>
 	const context = useContext(ExchangeMoneyContext);
 	const [ offlineQueueLength, setOfflineQueueLength ] = useState(0);
 	const [ cash, setCash ] = useState({});
+	const hasUploadedRef = useRef(false);
 
 
 
@@ -74,12 +76,11 @@ const Home = (props) =>
 	// AddCustomer emil not require
 
 
-	const customersSetter = async () =>
-	{
-		const customerData = await Customers.getCustomers();
-		let newCustomerData = [];
-		customerData.forEach(customer => {
-			newCustomerData.push({
+	// Helper function to set customers from local DB
+	const customersSetter = async () => {
+		try {
+			const customerData = await Customers.getCustomers();
+			const newCustomerData = customerData.map(customer => ({
 				id: customer?.id,
 				_id: customer?._id,
 				active: customer?.active, 
@@ -88,264 +89,738 @@ const Home = (props) =>
 				countryCode: customer?.countryCode,
 				phone: customer?.phone,
 				email: customer?.email, 
-				summary: JSON.parse(customer?.summary),
+				summary: JSON.parse(customer?.summary || '[]'),
 				userId: customer?.userId
-			})});
-		dispatch("setCustomers", SortCustomers(newCustomerData));
+			}));
+			
+			dispatch("setCustomers", SortCustomers(newCustomerData));
+			return newCustomerData;
+		} catch (error) {
+			console.error("Error setting customers:", error);
+			return [];
+		}
+	};
+
+	// Helper function to update transaction received status
+	const updateTransactionReceivedStatus = async (transaction, user) => {
+	if (!transaction.isReceivedMobile) {
+		const reqData = {
+		id: transaction.id,
+		amount: transaction.amount,
+		profit: transaction.profit,
+		information: transaction.information,
+		currencyId: transaction.currencyId,
+		cashbookId: transaction.cashbookId,
+		type: transaction.type,
+		isReceivedMobile: true,
+		dateTime: transaction.dateTime
+		};
+		
+		try {
+		await fetch(serverPath("/transaction"), {
+			method: "PUT",
+			headers: { "Content-Type": "Application/JSON" },
+			body: JSON.stringify({ ...reqData, providerId: user.id })
+		});
+		} catch (error) {
+		console.error("Error updating transaction status:", error);
+		}
 	}
-	useEffect(() => {
-		(async () =>
-		{
-			if(!isFocused)
-				return;
-			if (context.isGuest)
+	};
+
+	// Helper function to process and store transactions
+	const processTransactions = async (transactions, user) => {
+	for (const transaction of transactions) {
+		try {
+		await Transaction.createTransaction(
+			transaction.id,
+			transaction.amount,
+			transaction.profit,
+			transaction.information,
+			transaction.currencyId,
+			transaction.cashbookId,
+			transaction.type,
+			transaction.dateTime,
+			transaction.isReceivedMobile,
+			transaction.photo,
+		);
+		
+		await updateTransactionReceivedStatus(transaction, user);
+		} catch (error) {
+		console.error("Error processing transaction:", error);
+		}
+	}
+	};
+
+	
+	// Helper function to check if customer already exists in local DB
+	const customerExists = async (phone) => {
+		try {
+			const existingCustomers = await Customers.getCustomers();
+			return existingCustomers.some(customer => customer.phone === phone);
+		} catch (error) {
+			console.error("Error checking customer existence:", error);
+			return false;
+		}
+	};
+
+	// Updated syncInitialData function
+	const syncInitialData = async (user, customer) => {
+	try {
+		setIsLoading(true);
+		
+		// Fetch cashbook data
+		const response = await fetch(serverPath("/get/cashbook"), {
+		method: "POST",
+		headers: { "Content-Type": "Application/JSON" },
+		body: JSON.stringify({ providerId: user.id, ownerId: customer.id })
+		});
+
+		const objData = await response.json();
+		
+		if (objData.status !== "success") {
+		Alert.alert("Info!", objData.message || "Failed to fetch cashbook data");
+		return;
+		}
+
+		// Filter and process customers
+		const filterCustomers = objData.data?.filter(customerItem => customerItem.customerId !== customer.id)
+		.map(customerItem => ({
+			...customerItem,
+			customer: customerItem.customer || {}
+		}));
+
+		// Store customers locally - ONLY if they don't exist
+		for (const customerItem of filterCustomers) {
+		const phone = customerItem?.customer?.phone;
+		
+		// Check if customer already exists before creating
+		if (phone && !(await customerExists(phone))) {
+			try {
+			await Customers.createCustomer(
+				customerItem?.id,
+				customerItem?.customer?.firstName,
+				customerItem?.customer?.lastName,
+				customerItem?.customer?.countryCode || "",
+				phone,
+				customerItem?.customer?.email,
+				JSON.stringify(customerItem?.summary || []),
+				customerItem?.customer?.active,
+				customerItem?.customer?.userId
+			);
+			} catch (error) {
+			console.error(`Error creating customer ${phone}:`, error);
+			}
+		} else {
+			console.log(`Customer ${phone} already exists, skipping creation`);
+		}
+		}
+
+		dispatch("setCustomers", SortCustomers(filterCustomers));
+
+		// Fetch and process currencies - ONLY if they don't exist
+		const currencyResponse = await fetch(serverPath("/get/currency"), {
+		method: "POST",
+		headers: { "Content-Type": "Application/JSON" },
+		body: JSON.stringify({ providerId: user.id })
+		});
+
+		const currencyData = await currencyResponse.json();
+		
+		if (currencyData.status === "success") {
+		// Check existing currencies
+		const existingCurrencies = await Currency.getCurrencies();
+		
+		// Process transactions for each customer and currency
+		for (const customerItem of filterCustomers) {
+			for (const currency of currencyData.data) {
+			try {
+				// Check if transactions already exist for this customer/currency
+				// const existingTransactions = await Transaction.getTransactionsByCurrencyId(currency.id);
+				
+				// Only fetch if we don't have transactions for this currency
+				// if (existingTransactions.length === 0) {
+					const transactionResponse = await fetch(serverPath("/get/cashbook_transactions"), {
+						method: "POST",
+						headers: { "Content-Type": "Application/JSON" },
+						body: JSON.stringify({ 
+						cashbookId: customerItem.id, 
+						currencyId: currency.id, 
+						providerId: user.id 
+						})
+					});
+
+					const transactionObjData = await transactionResponse.json();
+					
+					if (transactionObjData.status === "success" && transactionObjData.data.length > 0) {
+						await processTransactions(transactionObjData.data, user);
+					} else if (transactionObjData.status === "failure") {
+						Alert.alert("Info!", transactionObjData.message);
+					}
+				// } else {
+				// console.log(`Transactions for currency ${currency.id} already exist, skipping`);
+				// }
+			} catch (error) {
+				console.error(`Error processing transactions for customer ${customerItem.id}:`, error);
+			}
+			}
+		}
+
+		// Set currencies in state and local DB - ONLY if not already set
+		if (globalState.currencies.length <= 0) {
+			context.setState(prev => ({ ...prev, currency: currencyData.data[0] }));
+			dispatch('setCurrencies', currencyData.data);
+		}
+		
+		// Create currencies in local DB only if they don't exist
+		for (const currency of currencyData.data) {
+			const currencyExists = existingCurrencies.some(curr => curr.id === currency.id || curr._id === currency.id);
+			if (!currencyExists) {
+			await Currency.createCurrency(currency.id, currency?.code, currency.name);
+			}
+		}
+		} else {
+		Alert.alert("Info!", currencyData.message);
+		}
+
+		// Mark first time setup as complete
+		await AsyncStorage.setItem("isFirstTime", JSON.stringify({ isFirstTime: false }));
+		
+	} catch (error) {
+		console.error("Error in syncInitialData:", error);
+		Alert.alert("Info!", "Error Code: 2");
+	} finally {
+		setIsLoading(false);
+	}
+	};
+
+	// Helper function to sync received transactions
+	const syncReceivedTransactions = async (customers, user, currency) => {
+	try {
+		const customersClone = [...customers];
+		
+		for (const customer of customersClone) {
+		try {
+			const request = await fetch(serverPath("/get/receivedTransactions"), {
+			method: "POST",
+			headers: { "Content-Type": "Application/JSON" },
+			body: JSON.stringify({ 
+				cashbookId: customer._id || customer.id, 
+				currencyId: currency.id, 
+				providerId: user.id 
+			})
+			});
+
+			const objData = await request.json();
+			
+			if (objData.status === "success" && objData.data.length >= 1) {
+			const cashs = [];
+			
+			// Process transactions
+			for (const transaction of objData.data) {
+				const tranIndex = cashs.findIndex(item => item.cashbookId === transaction.cashbookId);
+				
+				if (tranIndex >= 0) {
+				if (transaction.type) {
+					cashs[tranIndex].cashIn += transaction.amount;
+				} else {
+					cashs[tranIndex].cashOut += transaction.amount;
+				}
+				cashs[tranIndex].profit += transaction.profit;
+				} else {
+				cashs.push({
+					cashIn: transaction.type ? transaction.amount : 0,
+					cashOut: !transaction.type ? transaction.amount : 0,
+					cashbookId: transaction.cashbookId,
+					profit: transaction.profit
+				});
+				}
+
+				// Store transaction and update status
+				await Transaction.createTransaction(
+				transaction.id,
+				transaction.amount,
+				transaction.profit,
+				transaction.information,
+				transaction.currencyId,
+				transaction.cashbookId,
+				transaction.type,
+				transaction.dateTime,
+				transaction.isReceivedMobile,
+				transaction.photo,
+				);
+				
+				await updateTransactionReceivedStatus(transaction, user);
+			}
+
+			// Update customer summary
+			const customerIndex = customersClone.findIndex(item => 
+				(item._id || item.id) === (customer._id || customer.id)
+			);
+
+			if (customerIndex >= 0 && cashs.length >= 1) {
+				await updateCustomerSummary(customersClone[customerIndex], cashs[0], currency.id);
+			}
+			}
+		} catch (error) {
+			console.error(`Error syncing transactions for customer ${customer.id}:`, error);
+		}
+		}
+
+		dispatch("setCustomers", customersClone);
+	} catch (error) {
+		console.error("Error in syncReceivedTransactions:", error);
+	}
+	};
+
+	// Helper function to update customer summary
+	const updateCustomerSummary = async (customer, cashData, currencyId) => {
+	try {
+		const customerId = customer.id;
+		const firstName = customer.customer?.firstName || customer.firstName;
+		const lastName = customer.customer?.lastName || customer.lastName;
+		const countryCode = customer.customer?.countryCode || customer.countryCode;
+		const phone = customer.customer?.phone || customer.phone;
+		const email = customer.customer?.email || customer.email;
+		const active = customer.active || customer.customer?.active;
+		const userId = customer.customer?.userId || customer.userId;
+
+		let newSummary = [];
+		const oldSummary = Array.isArray(customer.summary) ? customer.summary : [];
+		const existingCurrencySummary = oldSummary.find(summ => summ.currencyId === currencyId);
+
+		if (existingCurrencySummary) {
+		// Update existing summary
+		const otherSummaries = oldSummary?.filter(summ => summ.currencyId !== currencyId);
+		const updatedSummary = {
+			...existingCurrencySummary,
+			cashIn: existingCurrencySummary.cashIn + cashData.cashIn,
+			cashOut: existingCurrencySummary.cashOut + cashData.cashOut,
+			totalProfit: existingCurrencySummary.totalProfit + cashData.profit
+		};
+		
+		newSummary = [...otherSummaries, updatedSummary];
+		} else if (oldSummary.length > 0) {
+		// Add new currency summary to existing summaries
+		newSummary = [
+			...oldSummary,
 			{
-				customersSetter();
+			cashIn: cashData.cashIn,
+			cashOut: cashData.cashOut,
+			currencyId: currencyId,
+			totalProfit: cashData.profit,
+			cashbookId: customer._id || customer.id
+			}
+		];
+		} else {
+		// Create first summary
+		newSummary = [{
+			cashIn: cashData.cashIn,
+			cashOut: cashData.cashOut,
+			currencyId: currencyId,
+			totalProfit: cashData.profit,
+			cashbookId: customer._id || customer.id
+		}];
+		}
+
+		// Update customer in local DB and state
+		await Customers.updateCustomer(
+		customerId,
+		firstName,
+		lastName,
+		countryCode,
+		phone,
+		email,
+		JSON.stringify(newSummary),
+		active,
+		userId
+		);
+
+		customer.summary = newSummary;
+	} catch (error) {
+		console.error("Error updating customer summary:", error);
+	}
+	};
+
+	useEffect(() => {
+		if (!isFocused) return;
+
+		const loadInitialData = async () => {
+			if (context.isGuest) {
+				await customersSetter();
 				return;
 			}
 
 			try {
 				const isFirstTime = JSON.parse(await AsyncStorage.getItem("isFirstTime"))?.isFirstTime;
 
-				if (globalState.customers.length <= 0 && !isFirstTime)
-				{
-					const offlineCurrencies = await Currency.getCurrencies();
-					customersSetter();
-					const currencyData = context.isConnected ? offlineCurrencies : [];
+				// Check if we already have customers in local DB
+				const localCustomers = await Customers.getCustomers();
 
-					if (!context.isConnected)
-						offlineCurrencies.forEach(currency => { currencyData.push({...currency, id: currency._id}) });
-					
-					if (globalState.currencies.length <= 0)
+				// Load offline data if no customers in state AND no customers in local DB
+				// if (globalState.customers.length <= 0 && localCustomers.length <= 0 && !isFirstTime) {
+				if (globalState.customers.length <= 0 && !isFirstTime) {
+						const [offlineCurrencies, offlineOpeningBalances] = await Promise.all([
+						Currency.getCurrencies(),
+						OpeningBalance.getOpeningBalance()
+					]);
+
+					await customersSetter();
+
+					const currencyData = context.isConnected ? offlineCurrencies : 
+					offlineCurrencies.map(currency => ({ ...currency, id: currency._id }));
+
+					if (globalState.currencies.length <= 0) {
 						dispatch("setCurrencies", currencyData);
+					}
 
-					if (!context.currency)
-						context.setState(prev => ({...prev, currency: currencyData[0]}));
-					return;
-				};
+					if (globalState.openingBalances.length <= 0) {
+						dispatch("setOpeningBalances", offlineOpeningBalances);
+					}
 
-
-				if (globalState.customers.length <= 0 && context.isConnected)
-				{
-					let filterCustomers = [];
-					setIsLoading(true);
-					const response = await fetch(serverPath("/get/cashbook"), {
-						method: "POST",
-						headers: {
-								"Content-Type": "Application/JSON",
-						},
-						body: JSON.stringify({providerId: context.user.id, ownerId: context.customer.id})
-					});
-
-					const objData = await response.json();
-					if (objData.status === "success")
-					{
-						objData.data.forEach(customer =>
-						{
-							if (customer.customerId !== context.customer.id)
-								filterCustomers.push(customer);
-
-							if (customer.customerId !== context.customer.id && isFirstTime)
-							{
-								Customers.createCustomer(
-									customer?.id,
-									customer?.customer?.firstName,
-									customer?.customer?.lastName,
-									customer?.customer?.countryCode || "",
-									customer?.customer?.phone,
-									customer?.customer?.email,
-									JSON.stringify(customer?.summary),
-									customer?.customer?.active,
-									customer?.customer?.userId
-								);
-							}
-						});
-						dispatch("setCustomers", SortCustomers(filterCustomers));
-						if (isFirstTime)
-						{
-							const currencyResponse = await fetch(serverPath("/get/currency"), {
-								method: "POST",
-								headers: {
-									"Content-Type": "Application/JSON"
-								},
-								body: JSON.stringify({providerId: context.user.id})
-							});
-
-							const currency = await currencyResponse.json();
-							if (currency.status === "success")
-							{
-								filterCustomers.forEach(async (customer) =>
-								{
-									currency.data.forEach(async (curr) => {
-										const transactionResponse = await fetch(serverPath("/get/cashbook_transactions"), {
-											method: "POST",
-											headers: {
-												"Content-Type": "Application/JSON",
-											},
-											body: JSON.stringify({ cashbookId: customer.id, currencyId: curr.id, providerId: context.user.id })
-										});
-										const transactionObjData = await transactionResponse.json();
-										if (transactionObjData.status === "success" && transactionObjData.data.length > 0)
-										{
-											transactionObjData.data.forEach(async (transaction) => {
-												Transaction.createTransaction(
-													transaction.id,
-													transaction.amount,
-													transaction.profit,
-													transaction.information,
-													transaction.currencyId,
-													transaction.cashbookId,
-													transaction.type,
-													transaction.dateTime,
-													transaction.isReceivedMobile,
-													transaction.photo,
-												);
-												
-												if (!transaction.isReceivedMobile)
-												{
-													const reqData = {id: transaction.id, amount: transaction.amount, profit: transaction.profit, information: transaction.information, currencyId: transaction.currencyId, cashbookId: transaction.cashbookId, type: transaction.type, isReceivedMobile: true, dateTime: transaction.dateTime};
-													const updateRequest = await fetch(serverPath("/transaction"), {
-														method: "PUT",
-														headers: {
-															"Content-Type": "Application/JSON",
-														},
-														body: JSON.stringify({...reqData, providerId: context.user.id })
-													});
-													const updateObjData = await updateRequest.json();
-												}
-											});
-										}
-										if (transactionObjData.status === "failure")
-											Alert.alert("Info!", transactionObjData.message)
-									})
-								});
-
-
-								context.setState(prev => ({...prev, currency: currency.data[0]}));
-								dispatch('setCurrencies', currency.data);
-								currency.data.forEach(curr => Currency.createCurrency(curr.id, curr?.code, curr.name) )
-							}
-							if(currency.status === 'failure')
-								Alert.alert("Info!", currency.message);
-						}
-					};
-
-					if (objData.status === "failure")
-						Alert.alert("Info!", objData.message)
-
-					if (isFirstTime)
-						await AsyncStorage.setItem("isFirstTime", JSON.stringify({isFirstTime: false}))
-
-					setIsLoading(false);
+					if (!context.currency) {
+						context.setState(prev => ({ ...prev, currency: currencyData[0] }));
+					}
 					return;
 				}
-			} catch (error) {
+
+				// Sync data from server only if we don't have local customers
+				if (localCustomers.length <= 0 && context.isConnected) {
+					await syncInitialData(context.user, context.customer);
+				} else {
+					// If we already have local customers, just set them in state
+					await customersSetter();
+				}
+				} catch (error) {
 				setIsLoading(false);
-				Alert.alert("Info!", "Error Code: 2")
+				Alert.alert("Info!", "Error Code: 2");
 			}
-		})();
+		};
+
+		loadInitialData();
 	}, [isFocused]);
 
-	useEffect(() =>
-	{
-		(async () =>
-		{
-			const isFirstTime = JSON.parse(await AsyncStorage.getItem("isFirstTime"))?.isFirstTime;
-			if (context.isConnected && globalState.customers.length >= 1 && context.currency && !isFirstTime)
-			{
-				try {
-					const customersClone = [...globalState.customers];
-					customersClone.forEach(async (cus) =>
-					{
-						const request = await fetch(serverPath("/get/receivedTransactions"), {
-							method: "POST",
-							headers: {
-								"Content-Type": "Application/JSON",
-							},
-							body: JSON.stringify({ cashbookId: cus._id || cus.id, currencyId: context.currency.id, providerId: context.user.id })
-						});
+	// useEffect for syncing received transactions
+	useEffect(() => {
+	const syncTransactions = async () => {
+		const isFirstTime = JSON.parse(await AsyncStorage.getItem("isFirstTime"))?.isFirstTime;
+		
+		if (context.isConnected && 
+			globalState.customers.length >= 1 && 
+			context.currency && 
+			!isFirstTime) {
+		await syncReceivedTransactions(
+			globalState.customers, 
+			context.user, 
+			context.currency
+		);
+		}
+	};
 
-						const objData = await request.json();
-						let cashs = [];
-
-						if (objData.status === "success" && objData.data.length >= 1)
-						{
-							objData.data.forEach(async (transaction) => {
-								const tranNdx = cashs.findIndex(per => per.cashbookId === transaction.cashbookId);
-								if (tranNdx >= 0)
-								{
-									transaction.type ? cashs[tranNdx].cashIn += transaction.amount : cashs[tranNdx].cashOut += transaction.amount;
-									cashs[tranNdx].profit += transaction.profit;
-								}
-								if (tranNdx < 0)
-									cashs.push({cashIn: transaction.type ? transaction.amount : 0, cashOut: !transaction.type ? transaction.amount : 0, cashbookId: transaction.cashbookId, profit: transaction.profit});
-
-								Transaction.createTransaction(
-									transaction.id,
-									transaction.amount,
-									transaction.profit,
-									transaction.information,
-									transaction.currencyId,
-									transaction.cashbookId,
-									transaction.type,
-									transaction.dateTime,
-									transaction.isReceivedMobile,
-									transaction.photo,
-								);
-								const reqData = {id: transaction.id, amount: transaction.amount, profit: transaction.profit, information: transaction.information, currencyId: transaction.currencyId, cashbookId: transaction.cashbookId, type: transaction.type, isReceivedMobile: true, dateTime: transaction.dateTime};
-								const updateRequest = await fetch(serverPath("/transaction"), {
-									method: "PUT",
-									headers: {
-										"Content-Type": "Application/JSON",
-									},
-									body: JSON.stringify({...reqData, providerId: context.user.id })
-								});
-								const updateObjData = await updateRequest.json();
-							});
-
-							const customerNdx = customersClone.findIndex(per => (per._id || per.id) === (cus._id || cus.id));
-							if (cus.summary.length >= 1 && cashs.length >= 1)
-							{
-								const oldSummary = cus?.summary?.find(summ => (summ.currencyId === context.currency.id));
-
-								if (!oldSummary)
-								{
-									const newSummary = [...cus.summary, {cashIn: cashs[0]?.cashIn, cashOut: cashs[0]?.cashOut, currencyId: context.currency.id, totalProfit: cashs[0]?.profit, cashbookId: cus._id || cus.id }]
-									Customers.updateCustomer(cus.id, (cus.customer?.firstName || cus.firstName), (cus.customer?.lastName || cus.lastName), (cus.customer?.countryCode || cus.countryCode), (cus.customer?.phone || cus.phone), (cus.customer?.email || cus.email), JSON.stringify(newSummary), (cus.active || cus.customer?.active), (cus.customer?.userId || cus.userId));
-									customersClone[customerNdx].summary = newSummary;
-									// console.log(newSummary, "1");
-									return;	
-								}
-
-								const otherSummary = cus?.summary?.find(summ => summ.currencyId !== context.currency.id)
-								oldSummary.cashIn += cashs[0]?.cashIn;
-								oldSummary.cashOut += cashs[0]?.cashOut;
-								oldSummary.totalProfit += cashs[0]?.profit;
-								Customers.updateCustomer(cus.id, (cus.customer?.firstName || cus.firstName), (cus.customer?.lastName || cus.lastName), (cus.customer?.countryCode || cus.countryCode), (cus.customer?.phone || cus.phone), (cus.customer?.email || cus.email), JSON.stringify([otherSummary, oldSummary]), (cus.active || cus.customer?.active), (cus.customer?.userId || cus.userId));
-								customersClone[customerNdx].summary = [otherSummary, oldSummary];
-								// console.log([otherSummary, oldSummary], "2");
-								return;
-							};
-
-							if (cus.summary.length <= 0 && cashs.length >= 1)
-							{
-								const newSummary = [{cashIn: cashs[0]?.cashIn, cashOut: cashs[0]?.cashOut, currencyId: context.currency.id, totalProfit: cashs[0]?.profit, cashbookId: cus._id || cus.id }]
-								Customers.updateCustomer(cus.id, (cus.customer?.firstName || cus.firstName), (cus.customer?.lastName || cus.lastName), (cus.customer?.countryCode || cus.countryCode), (cus.customer?.phone || cus.phone), (cus.customer?.email || cus.email), JSON.stringify(newSummary), (cus.active || cus.customer?.active), (cus.customer?.userId || cus.userId));
-								customersClone[customerNdx].summary = newSummary;
-								// console.log(newSummary, "3");
-								return;
-							}
-						}
-					});
-
-					dispatch("setCustomers", customersClone);
-				} catch (error) {
-					console.log("home page error", error);
-					return null;
-				}
-			}
-		})();
+	syncTransactions();
 	}, [context.currency, globalState.customers.length]);
+
+
+
+
+
+
+
+
+
+
+
+
+	// ---------------THIS CODE IS WORKING BUT THE ABOVE CODE IS THE NEW VERSION CODE---------------
+	// const customersSetter = async () =>
+	// {
+	// 	const customerData = await Customers.getCustomers();
+	// 	let newCustomerData = [];
+	// 	customerData.forEach(customer => {
+	// 		newCustomerData.push({
+	// 			id: customer?.id,
+	// 			_id: customer?._id,
+	// 			active: customer?.active, 
+	// 			firstName: customer?.firstName, 
+	// 			lastName: customer?.lastName,
+	// 			countryCode: customer?.countryCode,
+	// 			phone: customer?.phone,
+	// 			email: customer?.email, 
+	// 			summary: JSON.parse(customer?.summary),
+	// 			userId: customer?.userId
+	// 		})});
+	// 	dispatch("setCustomers", SortCustomers(newCustomerData));
+	// }
+	// useEffect(() => {
+	// 	(async () =>
+	// 	{
+	// 		if(!isFocused)
+	// 			return;
+	// 		if (context.isGuest)
+	// 		{
+	// 			customersSetter();
+	// 			return;
+	// 		}
+
+	// 		try {
+	// 			const isFirstTime = JSON.parse(await AsyncStorage.getItem("isFirstTime"))?.isFirstTime;
+
+	// 			if (globalState.customers.length <= 0 && !isFirstTime)
+	// 			{
+	// 				const offlineCurrencies = await Currency.getCurrencies();
+	// 				const offlineOpeningBalances = await OpeningBalance.getOpeningBalance();
+	// 				customersSetter();
+	// 				const currencyData = context.isConnected ? offlineCurrencies : [];
+
+	// 				if (!context.isConnected)
+	// 					offlineCurrencies.forEach(currency => { currencyData.push({...currency, id: currency._id}) });
+					
+	// 				if (globalState.currencies.length <= 0)
+	// 					dispatch("setCurrencies", currencyData);
+					
+	// 				if (globalState.openingBalances.length <= 0)
+	// 					dispatch("setOpeningBalances", offlineOpeningBalances);
+
+	// 				if (!context.currency)
+	// 					context.setState(prev => ({...prev, currency: currencyData[0]}));
+	// 				return;
+	// 			};
+
+	// 			if (globalState.customers.length <= 0 && context.isConnected)
+	// 			{
+	// 				let filterCustomers = [];
+	// 				setIsLoading(true);
+	// 				const response = await fetch(serverPath("/get/cashbook"), {
+	// 					method: "POST",
+	// 					headers: {
+	// 							"Content-Type": "Application/JSON",
+	// 					},
+	// 					body: JSON.stringify({providerId: context.user.id, ownerId: context.customer.id})
+	// 				});
+
+	// 				const objData = await response.json();
+					
+	// 				if (objData.status === "success")
+	// 				{
+	// 					objData.data.forEach(customer =>
+	// 					{
+	// 						if (customer.customerId !== context.customer.id)
+	// 						{
+	// 							filterCustomers.push(customer);
+	// 							if (isFirstTime)
+	// 							{
+	// 								Customers.createCustomer(
+	// 									customer?.id,
+	// 									customer?.customer?.firstName,
+	// 									customer?.customer?.lastName,
+	// 									customer?.customer?.countryCode || "",
+	// 									customer?.customer?.phone,
+	// 									customer?.customer?.email,
+	// 									JSON.stringify(customer?.summary),
+	// 									customer?.customer?.active,
+	// 									customer?.customer?.userId
+	// 								);
+	// 							}
+	// 						}
+	// 					});
+	// 					dispatch("setCustomers", SortCustomers(filterCustomers));
+	// 					if (isFirstTime)
+	// 					{
+	// 						const currencyResponse = await fetch(serverPath("/get/currency"), {
+	// 							method: "POST",
+	// 							headers: {
+	// 								"Content-Type": "Application/JSON"
+	// 							},
+	// 							body: JSON.stringify({providerId: context.user.id})
+	// 						});
+
+	// 						const currency = await currencyResponse.json();
+	// 						if (currency.status === "success")
+	// 						{
+	// 							filterCustomers.forEach(async (customer) =>
+	// 							{
+	// 								currency.data.forEach(async (curr) => {
+	// 									const transactionResponse = await fetch(serverPath("/get/cashbook_transactions"), {
+	// 										method: "POST",
+	// 										headers: {
+	// 											"Content-Type": "Application/JSON",
+	// 										},
+	// 										body: JSON.stringify({ cashbookId: customer.id, currencyId: curr.id, providerId: context.user.id })
+	// 									});
+	// 									const transactionObjData = await transactionResponse.json();
+	// 									if (transactionObjData.status === "success" && transactionObjData.data.length > 0)
+	// 									{
+	// 										transactionObjData.data.forEach(async (transaction) => {
+	// 											Transaction.createTransaction(
+	// 												transaction.id,
+	// 												transaction.amount,
+	// 												transaction.profit,
+	// 												transaction.information,
+	// 												transaction.currencyId,
+	// 												transaction.cashbookId,
+	// 												transaction.type,
+	// 												transaction.dateTime,
+	// 												transaction.isReceivedMobile,
+	// 												transaction.photo,
+	// 											);
+												
+	// 											if (!transaction.isReceivedMobile)
+	// 											{
+	// 												const reqData = {id: transaction.id, amount: transaction.amount, profit: transaction.profit, information: transaction.information, currencyId: transaction.currencyId, cashbookId: transaction.cashbookId, type: transaction.type, isReceivedMobile: true, dateTime: transaction.dateTime};
+	// 												const updateRequest = await fetch(serverPath("/transaction"), {
+	// 													method: "PUT",
+	// 													headers: {
+	// 														"Content-Type": "Application/JSON",
+	// 													},
+	// 													body: JSON.stringify({...reqData, providerId: context.user.id })
+	// 												});
+	// 												const updateObjData = await updateRequest.json();
+	// 											}
+	// 										});
+	// 									}
+	// 									if (transactionObjData.status === "failure")
+	// 										Alert.alert("Info!", transactionObjData.message)
+	// 								})
+	// 							});
+
+
+	// 							context.setState(prev => ({...prev, currency: currency.data[0]}));
+	// 							dispatch('setCurrencies', currency.data);
+	// 							currency.data.forEach(curr => Currency.createCurrency(curr.id, curr?.code, curr.name) )
+	// 						}
+	// 						if(currency.status === 'failure')
+	// 							Alert.alert("Info!", currency.message);
+	// 					}
+	// 				};
+
+	// 				if (objData.status === "failure")
+	// 					Alert.alert("Info!", objData.message)
+
+	// 				if (isFirstTime)
+	// 					await AsyncStorage.setItem("isFirstTime", JSON.stringify({isFirstTime: false}))
+
+	// 				setIsLoading(false);
+	// 				return;
+	// 			}
+	// 		} catch (error) {
+	// 			setIsLoading(false);
+	// 			Alert.alert("Info!", "Error Code: 2")
+	// 		}
+	// 	})();
+	// }, [isFocused]);
+
+	// useEffect(() =>
+	// {
+	// 	(async () =>
+	// 	{
+	// 		const isFirstTime = JSON.parse(await AsyncStorage.getItem("isFirstTime"))?.isFirstTime;
+	// 		if (context.isConnected && globalState.customers.length >= 1 && context.currency && !isFirstTime)
+	// 		{
+	// 			try {
+	// 				const customersClone = [...globalState.customers];
+	// 				customersClone.forEach(async (cus) =>
+	// 				{
+	// 					const request = await fetch(serverPath("/get/receivedTransactions"), {
+	// 						method: "POST",
+	// 						headers: {
+	// 							"Content-Type": "Application/JSON",
+	// 						},
+	// 						body: JSON.stringify({ cashbookId: cus._id || cus.id, currencyId: context.currency.id, providerId: context.user.id })
+	// 					});
+
+	// 					const objData = await request.json();
+	// 					let cashs = [];
+
+	// 					if (objData.status === "success" && objData.data.length >= 1)
+	// 					{
+	// 						objData.data.forEach(async (transaction) => {
+	// 							const tranNdx = cashs.findIndex(per => per.cashbookId === transaction.cashbookId);
+	// 							if (tranNdx >= 0)
+	// 							{
+	// 								transaction.type ? cashs[tranNdx].cashIn += transaction.amount : cashs[tranNdx].cashOut += transaction.amount;
+	// 								cashs[tranNdx].profit += transaction.profit;
+	// 							}
+	// 							if (tranNdx < 0)
+	// 								cashs.push({cashIn: transaction.type ? transaction.amount : 0, cashOut: !transaction.type ? transaction.amount : 0, cashbookId: transaction.cashbookId, profit: transaction.profit});
+
+	// 							Transaction.createTransaction(
+	// 								transaction.id,
+	// 								transaction.amount,
+	// 								transaction.profit,
+	// 								transaction.information,
+	// 								transaction.currencyId,
+	// 								transaction.cashbookId,
+	// 								transaction.type,
+	// 								transaction.dateTime,
+	// 								transaction.isReceivedMobile,
+	// 								transaction.photo,
+	// 							);
+	// 							const reqData = {id: transaction.id, amount: transaction.amount, profit: transaction.profit, information: transaction.information, currencyId: transaction.currencyId, cashbookId: transaction.cashbookId, type: transaction.type, isReceivedMobile: true, dateTime: transaction.dateTime};
+	// 							const updateRequest = await fetch(serverPath("/transaction"), {
+	// 								method: "PUT",
+	// 								headers: {
+	// 									"Content-Type": "Application/JSON",
+	// 								},
+	// 								body: JSON.stringify({...reqData, providerId: context.user.id })
+	// 							});
+	// 							const updateObjData = await updateRequest.json();
+	// 						});
+
+	// 						const customerNdx = customersClone.findIndex(per => (per._id || per.id) === (cus._id || cus.id));
+	// 						if (cus.summary.length >= 1 && cashs.length >= 1)
+	// 						{
+	// 							const oldSummary = cus?.summary?.find(summ => (summ.currencyId === context.currency.id));
+
+	// 							if (!oldSummary)
+	// 							{
+	// 								const newSummary = [...cus.summary, {cashIn: cashs[0]?.cashIn, cashOut: cashs[0]?.cashOut, currencyId: context.currency.id, totalProfit: cashs[0]?.profit, cashbookId: cus._id || cus.id }]
+	// 								Customers.updateCustomer(cus.id, (cus.customer?.firstName || cus.firstName), (cus.customer?.lastName || cus.lastName), (cus.customer?.countryCode || cus.countryCode), (cus.customer?.phone || cus.phone), (cus.customer?.email || cus.email), JSON.stringify(newSummary), (cus.active || cus.customer?.active), (cus.customer?.userId || cus.userId));
+	// 								customersClone[customerNdx].summary = newSummary;
+	// 								// console.log(newSummary, "1");
+	// 								return;	
+	// 							}
+
+	// 							const otherSummary = cus?.summary?.find(summ => summ.currencyId !== context.currency.id)
+	// 							oldSummary.cashIn += cashs[0]?.cashIn;
+	// 							oldSummary.cashOut += cashs[0]?.cashOut;
+	// 							oldSummary.totalProfit += cashs[0]?.profit;
+	// 							Customers.updateCustomer(cus.id, (cus.customer?.firstName || cus.firstName), (cus.customer?.lastName || cus.lastName), (cus.customer?.countryCode || cus.countryCode), (cus.customer?.phone || cus.phone), (cus.customer?.email || cus.email), JSON.stringify([otherSummary, oldSummary]), (cus.active || cus.customer?.active), (cus.customer?.userId || cus.userId));
+	// 							customersClone[customerNdx].summary = [otherSummary, oldSummary];
+	// 							// console.log([otherSummary, oldSummary], "2");
+	// 							return;
+	// 						};
+
+	// 						if (cus.summary.length <= 0 && cashs.length >= 1)
+	// 						{
+	// 							const newSummary = [{cashIn: cashs[0]?.cashIn, cashOut: cashs[0]?.cashOut, currencyId: context.currency.id, totalProfit: cashs[0]?.profit, cashbookId: cus._id || cus.id }]
+	// 							Customers.updateCustomer(cus.id, (cus.customer?.firstName || cus.firstName), (cus.customer?.lastName || cus.lastName), (cus.customer?.countryCode || cus.countryCode), (cus.customer?.phone || cus.phone), (cus.customer?.email || cus.email), JSON.stringify(newSummary), (cus.active || cus.customer?.active), (cus.customer?.userId || cus.userId));
+	// 							customersClone[customerNdx].summary = newSummary;
+	// 							// console.log(newSummary, "3");
+	// 							return;
+	// 						}
+	// 					}
+	// 				});
+
+	// 				dispatch("setCustomers", customersClone);
+	// 			} catch (error) {
+	// 				console.log("home page error", error);
+	// 				return null;
+	// 			}
+	// 		}
+	// 	})();
+	// }, [context.currency, globalState.customers.length]);
+
+
+
+
+
+
+
+
+
+
+
+
 
 	// useEffect(() => {
 	// 	if(globalState.customers.length > 0 && isFocused)
@@ -395,7 +870,9 @@ const Home = (props) =>
 			if(!isFocused)
 				return 
 			const offlineQueue = await Queue.getQueueEntries();
-			if (offlineQueue.length >= 1) {
+			if (offlineQueue.length > 0 && !hasUploadedRef.current) {
+				// I hasUploadedRef for to avoid twice data upload to server.
+				hasUploadedRef.current = true;
 				uploadData();
 			}
 			setOfflineQueueLength(offlineQueue.length);
@@ -452,20 +929,12 @@ const Home = (props) =>
 									Transaction.updateTransaction(findOfflineTran.id, id, amount, profit, information, currencyId, cashbookId, type, dateTime);
 
 									const transactionsClone = [...globalState.transactions];
-									const dailyTransactionsClone = [...globalState.dailyTransactions];
 									if (transactionsClone.length >= 1)
 									{
 										const transIndex = transactionsClone.findIndex(tran => tran.id === data.id);
 										if (transIndex >= 0)
 											transactionsClone[transIndex] = objData.data;
 										dispatch("setTransactions", transactionsClone);
-									}
-									if (dailyTransactionsClone.length >= 1)
-									{
-										const dailyTransIndex = dailyTransactionsClone.findIndex(tran => tran.id === data.id);
-										if (dailyTransIndex >= 0)
-											dailyTransactionsClone[dailyTransIndex] = objData.data;
-										dispatch("setDailyTransactions", dailyTransactionsClone);
 									}
 								}
 								if (objData.status === "failure")
@@ -619,6 +1088,7 @@ const Home = (props) =>
 				}
 
 				setOfflineQueueLength(0);
+				hasUploadedRef.current = false;
 			})
 		}
 	};

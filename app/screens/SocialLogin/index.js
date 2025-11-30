@@ -223,6 +223,8 @@ const SocialLogin = (props) => {
       const user = await response.json();
       user.provider = "google";
       const customer = await getCustomer(user.id, user);
+
+      // The App Problem Is the login: true when it's true it give's the error
       context.setState(prev => ({...prev, user, customer, login: true}));
       await AsyncStorage.setItem("@user", JSON.stringify(user));
       if (customer) {

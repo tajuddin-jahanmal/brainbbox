@@ -1,20 +1,25 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useIsFocused } from "@react-navigation/core";
 import React, { useContext, useEffect, useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Alert, Text, TouchableOpacity, View } from "react-native";
 import { DataProvider, LayoutProvider, RecyclerListView } from "recyclerlistview";
 import Button from "../../components/Button";
 import Card from "../../components/Card";
 import CustomeDropdown from "../../components/CustomeDropdown";
 import Header from "../../components/Header";
+import OpeningBalanceModal from '../../components/OpeningBalanceModal';
 import Transaction from "../../components/Transaction";
 import TransactionModal from "../../components/TransactionModal";
 import { ScreenWidth } from "../../constant";
 import CustomerDB from "../../DB/Customer";
+import OpeningBalance from '../../DB/OpeningBalance';
 import TransactionDB from "../../DB/Transaction";
+import WeeklyBalances from '../../DB/WeeklyBalances';
 import { ExchangeMoneyContext } from "../../ExchangeMoneyContext";
 import language from "../../localization";
 import useStore from "../../store/store";
+import { getWeekRange } from '../../utils/dateMaker';
+import serverPath from '../../utils/serverPath';
 import GetResponsiveFontSize from "../../utils/TransactionFontSizeManager";
 import Style from "./Style";
 
@@ -33,6 +38,7 @@ const CashBook = (props) =>
 		totalCashInOut: { cash: 0, cashIn: 0, cashOut: 0, },
 		currentPage: 1,
 		totalDataLength: 0,
+		openingBalanceModal: false,
 	}
 
 	const [ globalState, dispatch ] = useStore();
@@ -111,7 +117,9 @@ const CashBook = (props) =>
 			}
 			if(globalState.customers?.length > 0 && isFocused)
 			{
+				const openingBalance = await OpeningBalance.getLatestOpeningBalance(context.currency.id);
 				let cash = { cashIn: 0, cashOut: 0 };
+
 				globalState.customers.forEach(customer => {
 					customer.summary?.forEach(per => {
 						if(per.currencyId == context.currency?.id)
@@ -121,13 +129,14 @@ const CashBook = (props) =>
 						}
 					})
 				});
+
 				setFields(prev => ({
 					...prev,
-					totalCashInOut: { cash: cash.cashIn - cash.cashOut, cashIn: cash.cashIn, cashOut: cash.cashOut }
+					totalCashInOut: { cash: cash.cashIn - cash.cashOut + (openingBalance?.amount || 0), cashIn: cash.cashIn, cashOut: cash.cashOut }
 				}))
 			}
 		})();
-	}, [globalState.customers, context.currency.id, isFocused]);
+	}, [globalState.customers, globalState.openingBalances, context.currency.id, isFocused]);
 
 	useEffect(() =>
 	{
@@ -136,7 +145,7 @@ const CashBook = (props) =>
 			if(!isFocused)
 				return;
 			
-			const data = await TransactionDB.getTransactionsByDate(context.currency.id);
+			const data = await TransactionDB.getTransactionsByCurrencyId(context?.currency?.id);
 			if (data?.length >= 1)
 				setDataProvider(dataProvider.cloneWithRows([...paginationFunction(data)]));
 
@@ -167,7 +176,8 @@ const CashBook = (props) =>
 			if(!isFocused)
 				return;
 			
-			const data = await TransactionDB.getTransactionsByDate(context.currency.id);
+			const data = await TransactionDB.getTransactionsByCurrencyId(context?.currency?.id);
+			
 			if (data?.length >= 1)
 			{
 				setFields(prev => ({
@@ -212,6 +222,426 @@ const CashBook = (props) =>
 		onChange(((customer?.customer?.firstName || customer?.firstName) +" "+ (customer.customer?.lastName || customer?.lastName || "")), "modalCustomerName");
 		onChange({visible: true, data: item}, "transactionModal");
 	}
+
+	const deleteHandler = async (item) =>
+	{
+		try {
+			setIsLoading(true);
+
+			if (context.isGuest)
+				return dataManager(item);
+
+			if (!context.isConnected)
+			{
+				Alert.alert("Alert", "You are offline.");
+				return
+			}
+
+			// const isExist = await Queue.findQueueEntrie(item._id || item.id);
+
+			// IN OFFLINE MODE TRANSACTION SHOULD DELETE BECAUSE FOR THE WEEKLY_BALANCES
+			// if (!context.isConnected)
+			// {
+			// 	if (isExist.length >= 1)
+			// 	{
+			// 		Queue.deleteQueueEntry(isExist[0].id);
+			// 		dataManager(item);
+			// 		return;
+			// 	};
+				
+			// 	let requestData = {
+			// 		id: (item._id || item.id),
+			// 		amount: item.amount,
+			// 		profit: item.profit,
+			// 		currencyId: item.currencyId,
+			// 		information: item.information,
+			// 		cashbookId: item.cashbookId,
+			// 		type: item.type,
+			// 		dateTime: item.dateTime,
+			// 	}
+
+			// 	Queue.createQueueEntry("delete", (item._id || item.id), "transactions", JSON.stringify(requestData), (item._id || item.id));
+			// 	dataManager(item);
+			// 	return;
+			// };
+
+			// if (isExist.length >= 1)
+			// {
+			// 	Queue.deleteQueueEntry(isExist[0].id);
+			// 	dataManager(item);
+			// 	return;
+			// };
+
+			const { weekStart, weekEnd } = getWeekRange(item.dateTime);
+			const weeklyData = await WeeklyBalances.getWeeklyBalancesByWeek(
+				context?.customer?.id,
+				context?.currency?.id,
+				new Date(weekStart).toISOString(),
+				new Date(weekEnd).toISOString()
+			);
+
+			if (weeklyData.length >= 1)
+			{
+				const weeklyDataClone = {...weeklyData[0]};
+				if (item.type) {
+					weeklyDataClone.totalCashIn -= item.amount;
+					weeklyDataClone.closingBalance -= item.amount;
+				} else {
+					weeklyDataClone.totalCashOut -= item.amount;
+					weeklyDataClone.closingBalance += item.amount;
+				}
+
+				const success = await updateServerTransaction(item._id || item.id);
+				if (!success)
+					return;
+
+				const weekylBalanceResponse = await fetch(serverPath("/weekly_balance"), {
+					method: "PUT",
+					headers: { "Content-Type": "Application/JSON" },
+					body: JSON.stringify({
+						id: weeklyDataClone._id || weeklyDataClone.id,
+						weekStart: weeklyDataClone.weekStart,
+						weekEnd: weeklyDataClone.weekEnd,
+						openingBalance: weeklyDataClone.openingBalance,
+						totalCashIn: weeklyDataClone.totalCashIn,
+						totalCashOut: weeklyDataClone.totalCashOut,
+						closingBalance: weeklyDataClone.closingBalance,
+						providerId: context?.user?.id,
+						customerId: context?.customer?.id,
+						currencyId: context?.currency?.id,
+					}),
+				});
+				const weeklyBalanceObjData = await weekylBalanceResponse.json();
+
+				if (weeklyBalanceObjData.status === "failure")
+				{
+					console.log(weeklyBalanceObjData, "Cashbook Weekly Balance Update");
+					return;
+				}
+
+				await WeeklyBalances.updateWeeklyBalance(
+					weeklyDataClone.id, // this ID is from localDatabase
+					weeklyDataClone.weekStart,
+					weeklyDataClone.weekEnd,
+					weeklyDataClone.openingBalance,
+					weeklyDataClone.totalCashIn,
+					weeklyDataClone.totalCashOut,
+					weeklyDataClone.closingBalance
+				);
+
+				updateNextWeekBalance(weekEnd, weeklyDataClone.closingBalance, item);
+				dataManager(item);
+
+				return;
+
+
+				// -----------FOR THE NEW WORKING BATCH UPDATE METHOD -----------------
+				// // Get all subsequent weeks that need updating
+				// const weeksToUpdate = await getSubsequentWeeksToUpdate(weekEnd, weeklyDataClone.closingBalance, item);
+
+				// // Add the current week to the update batch
+				// weeksToUpdate.unshift({
+				// 	id: weeklyDataClone._id || weeklyDataClone.id,
+				// 	weekStart: weeklyDataClone.weekStart,
+				// 	weekEnd: weeklyDataClone.weekEnd,
+				// 	openingBalance: weeklyDataClone.openingBalance,
+				// 	totalCashIn: weeklyDataClone.totalCashIn,
+				// 	totalCashOut: weeklyDataClone.totalCashOut,
+				// 	closingBalance: weeklyDataClone.closingBalance,
+				// 	customerId: context?.customer?.id,
+				// 	currencyId: context?.currency?.id,
+				// });
+
+				// // Send all updates in one API call
+				// const updateSuccess = await updateWeeklyBalancesBatch(weeksToUpdate);
+				
+				// if (updateSuccess) {
+				// 	// Update local database for all weeks
+				// 	for (const week of weeksToUpdate) {
+				// 		await WeeklyBalances.updateWeeklyBalance(
+				// 			week.id,
+				// 			week.weekStart,
+				// 			week.weekEnd,
+				// 			week.openingBalance,
+				// 			week.totalCashIn,
+				// 			week.totalCashOut,
+				// 			week.closingBalance
+				// 		);
+				// 	}
+				// 	dataManager(item);
+				// }
+				// return;
+			};
+			
+			const success = await updateServerTransaction(item._id || item.id);
+			if (success)
+				dataManager(item);
+
+		} catch (error) {
+			setIsLoading(false)
+			console.log(error)
+		}
+	};
+
+	const updateServerTransaction = async (itemId) => {
+		const response = await fetch(serverPath("/transaction"), {
+			method: "DELETE",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ id: itemId, providerId: context.user.id }),
+		});
+
+		const result = await response.json();
+		if (result.status === "failure")
+		{
+			Alert.alert("Info!", result.message);
+			setIsLoading(false);
+			return false;
+		}
+		return true;
+	};
+
+	// -----------FOR THE NEW WORKING BATCH UPDATE METHOD -----------------
+	// // New function to collect all subsequent weeks that need updating
+	// const getSubsequentWeeksToUpdate = async (startWeekEnd, startClosingBalance, transaction) => {
+	// 	const weeksToUpdate = [];
+	// 	let currentWeekEnd = startWeekEnd;
+	// 	let currentOpeningBalance = startClosingBalance;
+
+	// 	const newest = await WeeklyBalances.getNewestWeeklyBalance(
+	// 		context?.customer?.id,
+	// 		context?.currency?.id
+	// 	);
+
+	// 	if (!newest) {
+	// 		console.log("❌ No newest weekly balance found.");
+	// 		return weeksToUpdate;
+	// 	}
+
+	// 	while (true) {
+	// 		const nextWeekEndDate = new Date(currentWeekEnd);
+	// 		nextWeekEndDate.setDate(nextWeekEndDate.getDate() + 1);
+
+	// 		const { weekStart: nextWeekStart, weekEnd: nextWeekEnd } = getWeekRange(nextWeekEndDate);
+
+	// 		// Stop if we've reached the newest week
+	// 		if (new Date(nextWeekStart) > new Date(newest.weekStart)) {
+	// 			console.log("🛑 Reached newest weekly balance. Stopping updates.");
+	// 			break;
+	// 		}
+
+	// 		const nextWeeklyData = await WeeklyBalances.getWeeklyBalancesByWeek(
+	// 			context?.customer?.id,
+	// 			context?.currency?.id,
+	// 			new Date(nextWeekStart).toISOString(),
+	// 			new Date(nextWeekEnd).toISOString()
+	// 		);
+
+	// 		if (nextWeeklyData.length === 0) {
+	// 			console.log("⚠️ Missing week → Skipping:", nextWeekStart);
+	// 			currentWeekEnd = nextWeekEnd;
+	// 			continue;
+	// 		}
+
+	// 		const weeklyDataClone = { ...nextWeeklyData[0] };
+			
+	// 		// Update the week's data
+	// 		weeklyDataClone.openingBalance = currentOpeningBalance;
+			
+	// 		// Adjust closing balance based on transaction type
+	// 		if (transaction.type) {
+	// 			weeklyDataClone.closingBalance -= transaction.amount;
+	// 		} else {
+	// 			weeklyDataClone.closingBalance += transaction.amount;
+	// 		}
+
+	// 		weeksToUpdate.push({
+	// 			id: weeklyDataClone._id || weeklyDataClone.id,
+	// 			weekStart: weeklyDataClone.weekStart,
+	// 			weekEnd: weeklyDataClone.weekEnd,
+	// 			openingBalance: weeklyDataClone.openingBalance,
+	// 			totalCashIn: weeklyDataClone.totalCashIn,
+	// 			totalCashOut: weeklyDataClone.totalCashOut,
+	// 			closingBalance: weeklyDataClone.closingBalance,
+	// 			customerId: context?.customer?.id,
+	// 			currencyId: context?.currency?.id,
+	// 		});
+
+	// 		// Prepare for next iteration
+	// 		currentOpeningBalance = weeklyDataClone.closingBalance;
+	// 		currentWeekEnd = nextWeekEnd;
+	// 	}
+
+	// 	return weeksToUpdate;
+	// };
+
+		
+	// -----------FOR THE NEW WORKING BATCH UPDATE METHOD -----------------
+	// // New function to send batch update
+	// const updateWeeklyBalancesBatch = async (weeksData) => {
+	// 	try {
+	// 		const response = await fetch(serverPath("/weekly_balance/batch"), {
+	// 			method: "PUT",
+	// 			headers: { "Content-Type": "Application/JSON" },
+	// 			body: JSON.stringify({
+	// 				weeks: weeksData,
+	// 				providerId: context?.user?.id,
+	// 			}),
+	// 		});
+
+	// 		const result = await response.json();
+			
+	// 		if (result.status === "failure") {
+	// 			console.log("❌ Failed to update weekly balances batch:", result);
+	// 			Alert.alert("Error", "Failed to update weekly balances");
+	// 			return false;
+	// 		}
+
+	// 		console.log("✅ Successfully updated", weeksData.length, "weekly balances");
+	// 		return true;
+	// 	} catch (error) {
+	// 		console.log("❌ Error updating weekly balances batch:", error);
+	// 		Alert.alert("Error", "Network error while updating weekly balances");
+	// 		return false;
+	// 	}
+	// };
+
+	const updateNextWeekBalance = async (weekEnd, newOpeningBalance, transaction) =>
+	{
+		const newest = await WeeklyBalances.getNewestWeeklyBalance(
+			context?.customer?.id,
+			context?.currency?.id
+		);
+
+		if (!newest) {
+			console.log("❌ No newest weekly balance found. Stopping.");
+			return;
+		}
+
+		const nextWeekEndDate = new Date(weekEnd);
+		nextWeekEndDate.setDate(nextWeekEndDate.getDate() + 1);
+
+		const { weekStart: nextWeekStart, weekEnd: nextWeekEnd } = getWeekRange(nextWeekEndDate);
+
+		if (new Date(nextWeekStart) > new Date(newest.weekStart)) {
+			console.log("🛑 Reached newest weekly balance. Stopping updates.");
+			return;
+		}
+
+		const nextWeeklyData = await WeeklyBalances.getWeeklyBalancesByWeek(
+			context?.customer?.id,
+			context?.currency?.id,
+			new Date(nextWeekStart).toISOString(),
+			new Date(nextWeekEnd).toISOString()
+		);
+
+		if (nextWeeklyData.length === 0) {
+			console.log("⚠️ Missing week → Skipping:", nextWeekStart);
+			return updateNextWeekBalance(nextWeekEnd, newOpeningBalance, transaction);
+		}
+
+		const weeklyDataClone = { ...nextWeeklyData[0] };
+
+		weeklyDataClone.openingBalance = newOpeningBalance;
+		// weeklyDataClone.closingBalance = weeklyDataClone.openingBalance + (weeklyDataClone.totalCashIn - weeklyDataClone.totalCashOut);
+		if (transaction.type) {
+			weeklyDataClone.closingBalance -= transaction.amount;
+		} else {
+			weeklyDataClone.closingBalance += transaction.amount;
+		}
+
+		const response = await fetch(serverPath("/weekly_balance"), {
+			method: "PUT",
+			headers: { "Content-Type": "Application/JSON" },
+			body: JSON.stringify({
+				id: weeklyDataClone._id || weeklyDataClone.id,
+				weekStart: weeklyDataClone.weekStart,
+				weekEnd: weeklyDataClone.weekEnd,
+				openingBalance: weeklyDataClone.openingBalance,
+				totalCashIn: weeklyDataClone.totalCashIn,
+				totalCashOut: weeklyDataClone.totalCashOut,
+				closingBalance: weeklyDataClone.closingBalance,
+				providerId: context?.user?.id,
+				customerId: context?.customer?.id,
+				currencyId: context?.currency?.id,
+			}),
+		});
+
+		const objData = await response.json();
+		if (objData.status === "failure") {
+			console.log("❌ Failed to update next week:", objData);
+			return;
+		}
+
+		await WeeklyBalances.updateWeeklyBalance(
+			weeklyDataClone.id, // this ID is from localDatabase
+			weeklyDataClone.weekStart,
+			weeklyDataClone.weekEnd,
+			weeklyDataClone.openingBalance,
+			weeklyDataClone.totalCashIn,
+			weeklyDataClone.totalCashOut,
+			weeklyDataClone.closingBalance
+		);
+
+		return updateNextWeekBalance(nextWeekEnd, weeklyDataClone.closingBalance, transaction);
+	};
+
+	const dataManager = async (item) =>
+	{
+		const customerData = await CustomerDB.getCustomers();
+		let cloneCustomers = [...globalState.customers];
+		
+		let cashBookIndex = cloneCustomers.findIndex(per => (per._id || per.id) == item.cashbookId);
+		if(cashBookIndex < 0)
+			return Alert.alert("Info!",  "Please Try Again!");
+		let cloneSummary = [...cloneCustomers[cashBookIndex]?.summary];
+		let summaryIndex = cloneSummary.findIndex(per => per.currencyId == item.currencyId)
+		if(summaryIndex < 0)
+			return Alert.alert("Info!",  "PLease Try Again!");
+		let In_Out_Amount = cloneSummary[summaryIndex][item.type ? "cashIn" : "cashOut"];
+		if (item.type === false || item.type === 0)
+		{
+			// let newInAmount = (cloneSummary[summaryIndex]["cashIn"] + item.amount)
+			// cloneSummary[summaryIndex]["cashIn"] = newInAmount;
+		}
+		let newAmount = (In_Out_Amount - item.amount)
+		let totalProfit = (cloneSummary[summaryIndex].totalProfit - item.profit)
+		cloneSummary[summaryIndex][item.type ? "cashIn" : "cashOut"] = newAmount;
+		cloneSummary[summaryIndex].totalProfit = totalProfit;
+		cloneCustomers[cashBookIndex].summary = cloneSummary;
+		const transactionsClone = [...globalState.transactions];
+		let ndx = transactionsClone.findIndex(per => per.id == item.id)
+		if (ndx >= 0)
+		transactionsClone.splice(ndx, 1)
+		dispatch("setCustomers", cloneCustomers);
+		dispatch("setTransactions", transactionsClone);
+		TransactionDB.deleteTransaction(item._id || item.id);
+		const findCust = customerData.find(customer => customer._id === item.cashbookId);
+
+		if (cloneSummary[summaryIndex].cashIn <= 0 && cloneSummary[summaryIndex].cashOut <= 0)
+			setDataProvider(dataProvider.cloneWithRows([]));
+
+		CustomerDB.updateCustomer(
+			findCust.id,
+			findCust.firstName,
+			findCust.lastName,
+			findCust.countryCode,
+			findCust.phone,
+			findCust.email,
+			JSON.stringify(cloneCustomers[cashBookIndex].summary),
+			findCust.active,
+			findCust.userId
+		);
+		setIsLoading(false)
+	}
+
+	const deleteAlertHandler = (item) =>
+	{
+		Alert.alert(language.alert, language.doyYouWantToDeleteTransaction, [
+			{ text: language.cancel, onPress: () => { console.log("Cancled") }, style: 'cancel', },
+			{ text: language.ok, onPress: () => deleteHandler(item) },
+		]);
+	}
+
 
 	const NORMAL = "NORMAL";
 	const layoutProvider = new LayoutProvider((index) => {
@@ -258,6 +688,13 @@ const CashBook = (props) =>
 					{
 						fields.showTotalCashinOut &&
 						<Card style={Style.cashInOutContainer} activeOpacity={1}>
+							{
+								context.isGuest ? <View></View> :
+								<TouchableOpacity activeOpacity={0.6} onPress={() => onChange(true, "openingBalanceModal")}>
+									<Text style={Style.openningText}>{language.openingBalance}</Text>
+								</TouchableOpacity>
+							}
+
 							<View style={Style.cashInOutContent}>
 								{/* <View style={Style.cashInOut}>
 									<Text>{language.cashIn}</Text>
@@ -265,7 +702,14 @@ const CashBook = (props) =>
 								</View> */}
 								<View style={Style.cashInOut}>
 									<Text>{language.cash}</Text>
-									<Text style={{...Style.cashInOutMony, ...fields.totalCashInOut.cash < 0 ? Style.cashOut : Style.cashIn, ...{fontSize: GetResponsiveFontSize(fields.totalCashInOut.cash)}}}>{fields.totalCashInOut.cash} {context.currency.code}</Text>
+									<Text
+										style={{...Style.cashInOutMony,
+											...fields.totalCashInOut.cash < 0 ? Style.cashOut : Style.cashIn,
+											...{fontSize: GetResponsiveFontSize(fields.totalCashInOut.cash)}
+										}}
+									>
+										{fields.totalCashInOut.cash} {context.currency.code}
+									</Text>
 								</View>
 								{/* <View style={Style.cashInOut}>
 									<Text>{language.cashOut}</Text>
@@ -331,6 +775,12 @@ const CashBook = (props) =>
 				customerName={fields.modalCustomerName}
 				data={fields.transactionModal.data}
 				onDismiss={() => onChange({visible: false, data: {}}, "transactionModal")}
+				deleteHandler={() => deleteAlertHandler(fields.transactionModal.data)}
+				delete={true}
+			/>
+			<OpeningBalanceModal
+				visible={fields.openingBalanceModal}
+				onDismiss={() => onChange(false, "openingBalanceModal")}
 			/>
 		</View>
 	) : null

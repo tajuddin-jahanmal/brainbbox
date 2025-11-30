@@ -8,10 +8,11 @@ let globalState = {
     oppositeTransactions: [],
     currencies: [],
     currencyRate: [],
-    dailyTransactions: [],
     selfCash: [],
     contacts: [],
     sliders: [],
+    openingBalances: [],
+    weeklyBalances: [],
 };
 let actions = {};
 let listeners = [];

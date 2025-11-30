@@ -63,8 +63,8 @@ const Profile = (props) =>
 
     useEffect(() =>
     {
-        // if (context.localAuth && context.login && isFocused && !context.isGuest)
-        if (context.localAuth && context.login && isFocused)
+        // if (context.localAuth && context?.login && isFocused && !context.isGuest)
+        if (context.localAuth && context?.login && isFocused)
         {
             setFields({
                 firstName: context.customer?.firstName || "",
@@ -125,7 +125,8 @@ const Profile = (props) =>
 
     return isFocused ? (
         <View style={Style.container}>
-            <Header title={language.profile} goBack={goBack} logout logoutOnPress={() => context.logoutHandler()} />
+            {/* <Header title={language.profile} goBack={goBack} logout logoutOnPress={() => context.logoutHandler()} /> */}
+            <Header title={language.profile} goBack={goBack} />
             <View style={Style.content}>
                 <View style={Style.form}>
                     <Input placeholder={language.firstName} value={fields.firstName} onChangeText={(text) => onChange(text, "firstName")}  disabled={isLoading || context.isGuest}/>

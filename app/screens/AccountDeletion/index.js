@@ -40,7 +40,7 @@ const AccountDeletion = (props) =>
 
     useEffect(() =>
     {
-        if (context.localAuth && context.login && isFocused)
+        if (context.localAuth && context?.login && isFocused)
         {
             setFields(prev => ({
                 ...prev,

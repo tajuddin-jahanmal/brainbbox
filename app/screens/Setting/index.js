@@ -14,15 +14,18 @@ import { PermissionsAndroid } from "react-native";
 import DatePicker from "react-native-date-picker";
 import RNFS from "react-native-fs";
 import Toast from 'react-native-toast-message';
+import { LogoutAlert } from '../../components/Alerts';
 import ArrowCardDropdown from "../../components/ArrowCardDropdown";
 import BackupDateModal from "../../components/BackupDateModal";
 import Switch from "../../components/Switch";
 import { isAndroid } from "../../constant";
+import OpeningBalance from '../../DB/OpeningBalance';
 import Transaction from "../../DB/Transaction";
+import WeeklyBalances from '../../DB/WeeklyBalances';
 import { ExchangeMoneyContext } from "../../ExchangeMoneyContext";
 import language from "../../localization";
 import useStore from "../../store/store";
-import { fromAndToDateMaker } from "../../utils/dateMaker";
+import { fromAndToDateMaker, getWeekRange } from "../../utils/dateMaker";
 import { balanceSheetReportHTML, customerReportHTML, dailyReportHTML } from "../../utils/ReportsHTML";
 import SortData from "../../utils/SortData";
 
@@ -35,6 +38,7 @@ const Setting = (props) =>
 
     const initState = {
         showPicker: false,
+        logoutAlert: false,
         currencyIdForReport: null,
         currencies: [],
         appLock: false,
@@ -53,6 +57,16 @@ const Setting = (props) =>
             visibilityTime: 2000,
         });
     };
+
+    const noDailyReportToast = () => {
+		Toast.show({
+			type: 'info',
+			text1: language.info,
+			text2: language.noTransactionsOnthisDay,
+			swipeable: true,
+			visibilityTime: 3000,
+		});
+	};
 
     const [fields, setFields] = useState(initState);
     // const [selectedDate, setSelectedDate] = useState(new Date());
@@ -102,33 +116,114 @@ const Setting = (props) =>
         // }
 
         const toDay = date;
+
         let selectedDateForReport = new Date(date);
         selectedDateForReport.setHours(23, 59, 59, 999);
         const nextDay = selectedDateForReport;
 
-        const data = await dailyReport(toDay, nextDay);
+        const { weekStart, weekEnd } = getWeekRange(selectedDate);
 
-        if (data)
+        const weeklyData = await WeeklyBalances.getWeeklyBalancesByWeek(
+            context?.customer?.id,
+            fields.currencyIdForReport,
+            new Date(weekStart).toISOString(),
+            new Date(weekEnd).toISOString()
+        );
+
+        const openingBalance = await OpeningBalance.getLatestOpeningBalance(fields.currencyIdForReport);
+        let obWeekStart = null, obWeekEnd = null;
+        if (openingBalance?.dateTime) {
+            const obRange = getWeekRange(openingBalance.dateTime);
+            obWeekStart = obRange.weekStart;
+            obWeekEnd  = obRange.weekEnd;
+        }
+        const isInSameWeekRange = new Date(obWeekStart).getTime() === new Date(weekStart).getTime() && new Date(obWeekEnd).getTime() === new Date(weekEnd).getTime();
+
+        if (weeklyData.length <= 0)
         {
-            let sumCashs = {cashIn: 0, cashOut: 0};
+            const prevWeekEndDate = new Date(weekStart);
+            prevWeekEndDate.setDate(prevWeekEndDate.getDate() - 1);
+            const { weekStart: prevWeekStart, weekEnd: prevWeekEnd } = getWeekRange(prevWeekEndDate);
 
-            data.forEach(obj => {
-                sumCashs.cashIn += obj.cash.cashIn;
-                sumCashs.cashOut += obj.cash.cashOut;
-            });
+            const prevWeeklyData = await WeeklyBalances.getWeeklyBalancesByWeek(
+                context?.customer?.id,
+                fields.currencyIdForReport,
+                new Date(prevWeekStart).toISOString(),
+                new Date(prevWeekEnd).toISOString()
+            );
 
-            const fileName = `${toDay} Daily report.pdf`;
+            if (prevWeeklyData.length <= 0)
+            {
+                const BeforeThisDataWeek = await WeeklyBalances.getLatestExistingWeek(context?.customer?.id, fields.currencyIdForReport, selectedDateForReport);
+                // let opening = BeforeThisDataWeek?.closingBalance || openingBalance?.amount || 0;
+
+                let opening = 0;
+
+                if (BeforeThisDataWeek?.closingBalance !== undefined) {
+                    opening = BeforeThisDataWeek.closingBalance;
+                } else if (openingBalance && new Date(openingBalance.dateTime) <= new Date(selectedDateForReport)) {
+                    opening = openingBalance.amount;
+                }
+
+                // if (isInSameWeekRange && shouldSumOpeningBalance(openingBalance?.dateTime, selectedDateForReport))
+                //     opening += openingBalance?.amount;
+
+                reporter(weekStart, weekEnd, opening, selectedDateForReport, toDay);
+                return;
+            }
+
+            let opening = prevWeeklyData[0].closingBalance || 0;
+            if (isInSameWeekRange && shouldSumOpeningBalance(openingBalance?.dateTime, selectedDateForReport))
+                opening += openingBalance?.amount;
+            
+            reporter(weekStart, weekEnd, opening, selectedDateForReport, toDay);
+            return;
+        };
+        
+        let opening = weeklyData[0]?.openingBalance || 0;
+        if (isInSameWeekRange && shouldSumOpeningBalance(openingBalance?.dateTime, selectedDateForReport))
+            opening += openingBalance?.amount;   
+        
+        reporter(weekStart, weekEnd, opening, selectedDateForReport, toDay);
+    };
+
+    function shouldSumOpeningBalance(obDate, selectedDate) {
+        if (!obDate) return false;
+
+        const ob = new Date(obDate);
+        const selected = new Date(selectedDate);
+
+        ob.setHours(0, 0, 0, 0);
+        selected.setHours(0, 0, 0, 0);
+
+        return selected >= ob;
+    }
+
+    const reporter = async (weekStart, weekEnd, openingBalance, selectedDateForReport, toDay) =>
+    {
+        const transactions = await Transaction.transactionByDateAndCurrencyId(weekStart, weekEnd, fields.currencyIdForReport);
+        const dailyBalances = groupTransactionsByDay(transactions, openingBalance, selectedDateForReport);
+        const dailyBalance = dailyBalances[toDay.toISOString().slice(0, 10)];
+
+        if (dailyBalance)
+        {
+            const fileName = `${toDay.toISOString().slice(0, 10)} Daily report.pdf`;
             const currencyCode = fields.currencies.find(currency => currency.key === fields.currencyIdForReport);
-            const ownerFullName = context?.customer?.firstName + " " + (context?.customer?.lastName || "");
+            
+            const ownerFullName = context?.customer?.firstName + " " + (context?.customer?.lastName || ""); 
+            
             const { uri } = await printToFileAsync({
                 base64: true,
-                html: dailyReportHTML(ownerFullName, data, currencyCode.value, sumCashs, toDay),
+                html: dailyReportHTML(ownerFullName, dailyBalance, currencyCode.value, toDay),
                 margins: {top: 50, right: 50, bottom: 50, bottom: 50}
             });
+            
             const newURI = `${FileSystem.documentDirectory}${fileName}`;
 
             await FileSystem.moveAsync({from: uri, to: newURI});
             await shareAsync(newURI, { UTI: ".pdf", mimeType: "application/pdf" });
+        } else {
+            noDailyReportToast();
         }
     }
 
@@ -153,13 +248,71 @@ const Setting = (props) =>
         })();
     }, []);
 
+    function groupTransactionsByDay(transactions, firstOpeningBalance = 0, cutoffDate = null)
+    {
+        const dailyGroups = {};
+
+        // Sort transactions by date ascending
+        const sorted = [...transactions].sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
+
+        // Step 1: Group by day
+        for (const t of sorted) {
+            const tDate = new Date(t.dateTime);
+
+            // Skip transactions after the cutoff date
+            if (cutoffDate && tDate > cutoffDate) continue;
+
+            const dateKey = tDate.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+
+            if (!dailyGroups[dateKey]) {
+                dailyGroups[dateKey] = { 
+                    date: dateKey, 
+                    cashbooks: {}, // store each cashbookId separately
+                    totalCashIn: 0, 
+                    totalCashOut: 0,
+                    openingBalance: 0,
+                    closingBalance: 0,
+                };
+            }
+
+            const group = dailyGroups[dateKey];
+
+            // Initialize cashbook if not exists
+            if (!group.cashbooks[t.cashbookId]) {
+                const customer = globalState.customers.find(c => (c._id ?? c.id) === t.cashbookId);
+                group.cashbooks[t.cashbookId] = { customer, cashbookId: t.cashbookId, totalCashIn: 0, totalCashOut: 0 };
+            }
+
+            // Add amounts
+            if (t.type) {
+                group.cashbooks[t.cashbookId].totalCashIn += t.amount;
+                group.totalCashIn += t.amount;
+            } else {
+                group.cashbooks[t.cashbookId].totalCashOut += t.amount;
+                group.totalCashOut += t.amount;
+            }
+        }
+
+        // Calculate opening/closing balances day by day
+        let runningBalance = firstOpeningBalance;
+        for (const day of Object.values(dailyGroups).sort((a,b) => new Date(a.date) - new Date(b.date))) {
+            day.openingBalance = runningBalance;
+            day.closingBalance = day.openingBalance + day.totalCashIn - day.totalCashOut;
+            runningBalance = day.closingBalance;
+        }
+
+        return dailyGroups;
+    }
+
+
     const dailyReport = async (from, to) =>
     {
         let data = [];
         for (const customer of globalState.customers) {
             let cash = { cashIn: 0, cashOut: 0 };
             const {fromDate, toDate} = fromAndToDateMaker(from, to);
-            const TBD = await Transaction.transByDateAndcashbbokId(fromDate, toDate, (customer._id || customer.id), fields.currencyIdForReport); // TBD => Transacitions By Date
+            // TBD => Transacitions By Date
+            const TBD = await Transaction.transactionByDateAndCashbookIdAndCurrencyId(fromDate, toDate, (customer._id || customer.id), fields.currencyIdForReport);
 
             TBD.forEach(transaction => {
                 if(transaction.currencyId == fields.currencyIdForReport)
@@ -326,7 +479,7 @@ const Setting = (props) =>
     async function reportMaker (customer, fromDate, toDate, customerFullName, customerDirectory, currency)
     {
         const cashbookId = (customer?.summary[0]?.cashbookId || customer?._id || customer?.id);
-        const offlineTransactionsByDate = await Transaction.transByDateAndcashbbokId(fromDate, toDate, cashbookId, currency?.id);
+        const offlineTransactionsByDate = await Transaction.transactionByDateAndCashbookIdAndCurrencyId(fromDate, toDate, cashbookId, currency?.id);
         let OTByDateClone = [...offlineTransactionsByDate]; // OfflineTransactionsByDateClone
 
         let calculate = 0;
@@ -424,6 +577,11 @@ const Setting = (props) =>
                         </TouchableOpacity>
                     </Card> 
 
+                    <ArrowCardDropdown
+                        title={language.logout}
+                        cardHandler={() => onChange(true, "logoutAlert")}
+                    />
+
                     {
                         !context.isGuest && <ArrowCardDropdown
                             title={language.accountDeletion}
@@ -439,6 +597,14 @@ const Setting = (props) =>
                 visible={fields.backupModalVisible}
                 onDismiss={() => onChange(false, "backupModalVisible")}
                 backupDates={(from, to) => backupDatesHandler(from, to)}
+            />
+            <LogoutAlert
+                onConfirm={() => {
+                    context.logoutHandler();
+                    onChange(false, "logoutAlert");
+                }}
+                onCancel={() => onChange(false, "logoutAlert")}
+                show={fields.logoutAlert}
             />
         </View>
     )

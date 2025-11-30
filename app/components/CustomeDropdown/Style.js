@@ -3,7 +3,7 @@ import Colors from "../../constant";
 
 export default StyleSheet.create({
     container: {
-        position: 'absolute',
+        // position: 'absolute',
         right: 15,
     },
     thressDotContainer: {

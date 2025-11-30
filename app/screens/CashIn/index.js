@@ -12,13 +12,14 @@ import Customers from "../../DB/Customer";
 import Queue from "../../DB/Queue";
 import SelfCashDB from "../../DB/SelfCash";
 import TransactionDB from "../../DB/Transaction";
+import WeeklyBalances from '../../DB/WeeklyBalances';
 import { ExchangeMoneyContext } from "../../ExchangeMoneyContext";
 import language from "../../localization";
 import useStore from "../../store/store";
+import { getWeekRange } from '../../utils/dateMaker';
 import idGenerator from "../../utils/idGenerator";
 import isNumber from "../../utils/isNumber";
 import serverPath from "../../utils/serverPath";
-import SortData from "../../utils/SortData";
 import Validation from "../../validator/CashInOut";
 import Style from "./Style";
 
@@ -26,7 +27,7 @@ const CashIn = (props) =>
 {
 	const navigation = useNavigation();
 	const { goBack } = navigation;
-	const { dailyTrans, selfCash, cashbookId, fromCashbook, transactionEdit, transactionId } = props.route?.params;
+	const { selfCash, cashbookId, fromCashbook, transactionEdit, transactionId } = props.route?.params;
 	const context = useContext(ExchangeMoneyContext);
 
 	const initState = {
@@ -122,7 +123,10 @@ const CashIn = (props) =>
 		}
 		
 		if (!context.isConnected)
+		{
+            setIsLoading(false);
 			return Alert.alert(language.info, "You are offline please come online");
+		}
 			// return transactionEditManager("offline");
 
 		transactionEditManager("online");
@@ -136,6 +140,8 @@ const CashIn = (props) =>
 			transaction = transactionsClone.find(transaction => transaction._id === transactionId._id)
 		else
 			transaction = transactionsClone.find(transaction => transaction.id === transactionId.id)
+
+		const oldTransactionClone = {...transaction};
 
 		let cloneCustomers = [...globalState.customers];
 		let cashBookIndex = cloneCustomers.findIndex(per => (per._id || per.id) == cashbookId);
@@ -156,8 +162,8 @@ const CashIn = (props) =>
 		}
 
 		let In_Out_Amount = cloneSummary[summaryIndex][fields.type ? "cashIn" : "cashOut"];
-		let editAmount = (Number.parseInt(In_Out_Amount) - Number.parseInt(transaction.amount) + Number.parseInt(fields.amount));
-		let totalProfit = (Number.parseInt(cloneSummary[summaryIndex].totalProfit) - Number.parseInt(transaction.profit) + Number.parseInt(fields.profit))
+		let editAmount = (Number(In_Out_Amount) - Number(transaction.amount) + Number(fields.amount));
+		let totalProfit = (Number(cloneSummary[summaryIndex].totalProfit) - Number(transaction.profit) + Number(fields.profit))
 		cloneSummary[summaryIndex][fields.type ? "cashIn" : "cashOut"] = editAmount;
 		cloneSummary[summaryIndex].totalProfit = totalProfit;
 		cloneCustomers[cashBookIndex].summary = cloneSummary;
@@ -174,7 +180,7 @@ const CashIn = (props) =>
 		transaction.amount = Number(fields.amount);
 		transaction.profit = Number(fields.profit);
 		transaction.currencyId = fields.currencyId;
-		transaction.type = true;
+		transaction.type = fields.type;
 		transaction.isReceivedMobile = transaction.isReceivedMobile ? true : false;
 		transaction.information = fields.information;
 		const transactionClone = {...transaction};
@@ -217,23 +223,78 @@ const CashIn = (props) =>
 		{
 			setIsLoading(true);
 			try {
-				const response = await fetch(serverPath("/transaction"), {
-					method: "PUT",
-					headers: {
-						"Content-Type": "Application/JSON",
-					},
-					body: JSON.stringify({...transactionClone, providerId: context?.user?.id})
-				});
-		
-				const objData = await response.json();
-				if (objData.status === "success")
-					return transactionDataEditSetter(findCust, transaction, cloneCustomers, transactionsClone, cashBookIndex);
-		
-				if (objData.status === "failure")
+				const { weekStart, weekEnd } = getWeekRange(transaction.dateTime);
+				const weeklyData = await WeeklyBalances.getWeeklyBalancesByWeek(
+					context?.customer?.id,
+					context?.currency?.id,
+					new Date(weekStart).toISOString(),
+					new Date(weekEnd).toISOString()
+				);
+
+				if (weeklyData.length >= 1)
 				{
-					setIsLoading(false);
-					Alert.alert(language.info, objData.message)
+					const weeklyDataClone = {...weeklyData[0]};
+					const amountChange = transaction.amount - oldTransactionClone.amount;
+					if (transaction.type) {
+						weeklyDataClone.totalCashIn += amountChange;
+						weeklyDataClone.closingBalance += amountChange;
+					} else {
+						weeklyDataClone.totalCashOut += amountChange;
+						weeklyDataClone.closingBalance -= amountChange;
+					}
+
+					// if (transaction.type) {
+					// 	weeklyDataClone.totalCashIn = weeklyDataClone.totalCashIn - oldTransactionClone.amount + transaction.amount;
+					// 	weeklyDataClone.closingBalance = weeklyDataClone.closingBalance - oldTransactionClone.amount + transaction.amount;
+					// } else {
+					// 	weeklyDataClone.totalCashOut = weeklyDataClone.totalCashOut - oldTransactionClone.amount + transaction.amount;
+					// 	weeklyDataClone.closingBalance = weeklyDataClone.closingBalance + oldTransactionClone.amount - transaction.amount;
+					// }
+	
+					const success = await updateServerTransaction(transactionClone, findCust, transaction, cloneCustomers, transactionsClone, cashBookIndex);
+					if (!success)
+						return;
+
+					const weekylBalanceResponse = await fetch(serverPath("/weekly_balance"), {
+						method: "PUT",
+						headers: { "Content-Type": "Application/JSON" },
+						body: JSON.stringify({
+							id: weeklyDataClone._id || weeklyDataClone.id,
+							weekStart: weeklyDataClone.weekStart,
+							weekEnd: weeklyDataClone.weekEnd,
+							openingBalance: weeklyDataClone.openingBalance,
+							totalCashIn: weeklyDataClone.totalCashIn,
+							totalCashOut: weeklyDataClone.totalCashOut,
+							closingBalance: weeklyDataClone.closingBalance,
+							providerId: context?.user?.id,
+							customerId: context?.customer?.id,
+							currencyId: context?.currency?.id,
+						}),
+					});
+					const weeklyBalanceObjData = await weekylBalanceResponse.json();
+
+					if (weeklyBalanceObjData.status === "failure")
+					{
+						console.log(weeklyBalanceObjData, "CashIn Weekly Balance Update");
+						setIsLoading(false);
+						return;
+					}
+	
+					await WeeklyBalances.updateWeeklyBalance(
+						weeklyDataClone.id, // this ID is from localDatabase
+						weeklyDataClone.weekStart,
+						weeklyDataClone.weekEnd,
+						weeklyDataClone.openingBalance,
+						weeklyDataClone.totalCashIn,
+						weeklyDataClone.totalCashOut,
+						weeklyDataClone.closingBalance
+					);
+	
+					updateNextWeekBalance(weekEnd, weeklyDataClone.closingBalance, oldTransactionClone, transaction);
+					return;
 				};
+				
+				await updateServerTransaction(transactionClone, findCust, transaction, cloneCustomers, transactionsClone, cashBookIndex);
 			} catch (error) {
 				setIsLoading(false);
 				console.log(error.message, "error.message Edit CashIn");
@@ -281,6 +342,107 @@ const CashIn = (props) =>
 		setFields(initState);
 		goBack();
 		return;
+	}
+
+	const updateServerTransaction = async (transactionClone, findCust, transaction, cloneCustomers, transactionsClone, cashBookIndex) => {
+		const response = await fetch(serverPath("/transaction"), {
+			method: "PUT",
+			headers: {
+				"Content-Type": "Application/JSON",
+			},
+			body: JSON.stringify({...transactionClone, providerId: context?.user?.id})
+		});
+
+		const objData = await response.json();
+		if (objData.status === "success")
+			await transactionDataEditSetter(findCust, transaction, cloneCustomers, transactionsClone, cashBookIndex);
+
+		if (objData.status === "failure")
+		{
+			setIsLoading(false);
+			Alert.alert(language.info, objData.message)
+			return false;
+		};
+		return true;
+	};
+
+	const updateNextWeekBalance = async (weekEnd, newOpeningBalance, oldTransaction, transaction) =>
+	{
+		const newest = await WeeklyBalances.getNewestWeeklyBalance(
+			context?.customer?.id,
+			transaction.currencyId
+		);
+
+		if (!newest) {
+			console.log("❌ No newest weekly balance found. Stopping.");
+			return;
+		}
+
+		const nextWeekEndDate = new Date(weekEnd);
+		nextWeekEndDate.setDate(nextWeekEndDate.getDate() + 1);
+
+		const { weekStart: nextWeekStart, weekEnd: nextWeekEnd } = getWeekRange(nextWeekEndDate);
+
+		if (new Date(nextWeekStart) > new Date(newest.weekStart)) {
+			console.log("🛑 Reached newest weekly balance. Stopping updates.");
+			return;
+		}
+
+		const nextWeeklyData = await WeeklyBalances.getWeeklyBalancesByWeek(
+			context?.customer?.id,
+			context?.currency?.id,
+			new Date(nextWeekStart).toISOString(),
+			new Date(nextWeekEnd).toISOString()
+		);
+
+		if (nextWeeklyData.length === 0) {
+			console.log("⚠️ Missing week → Skipping:", nextWeekStart);
+			return updateNextWeekBalance(nextWeekEnd, newOpeningBalance, oldTransaction, transaction);
+		}
+
+		const weeklyDataClone = { ...nextWeeklyData[0] };
+		weeklyDataClone.openingBalance = newOpeningBalance;
+		// weeklyDataClone.closingBalance = weeklyDataClone.openingBalance + (weeklyDataClone.totalCashIn - weeklyDataClone.totalCashOut);
+		if (transaction.type) {
+			weeklyDataClone.closingBalance = weeklyDataClone.closingBalance - oldTransaction.amount + transaction.amount
+		} else {
+			weeklyDataClone.closingBalance = weeklyDataClone.closingBalance + oldTransaction.amount - transaction.amount;
+		}
+
+		const response = await fetch(serverPath("/weekly_balance"), {
+			method: "PUT",
+			headers: { "Content-Type": "Application/JSON" },
+			body: JSON.stringify({
+				id: weeklyDataClone._id || weeklyDataClone.id,
+				weekStart: weeklyDataClone.weekStart,
+				weekEnd: weeklyDataClone.weekEnd,
+				openingBalance: weeklyDataClone.openingBalance,
+				totalCashIn: weeklyDataClone.totalCashIn,
+				totalCashOut: weeklyDataClone.totalCashOut,
+				closingBalance: weeklyDataClone.closingBalance,
+				providerId: context?.user?.id,
+				customerId: context?.customer?.id,
+				currencyId: context?.currency?.id,
+			}),
+		});
+		const objData = await response.json();
+
+		if (objData.status === "failure") {
+			console.log("❌ Failed to update next week:", objData);
+			return;
+		}
+
+		await WeeklyBalances.updateWeeklyBalance(
+			weeklyDataClone.id, // this ID is from localDatabase
+			weeklyDataClone.weekStart,
+			weeklyDataClone.weekEnd,
+			weeklyDataClone.openingBalance,
+			weeklyDataClone.totalCashIn,
+			weeklyDataClone.totalCashOut,
+			weeklyDataClone.closingBalance
+		);
+		
+		return updateNextWeekBalance(nextWeekEnd, weeklyDataClone.closingBalance, oldTransaction, transaction);
 	}
 
 	const submitHandler = async () =>
@@ -424,37 +586,12 @@ const CashIn = (props) =>
 			return;
 		}
 
-		// Daily Transactions
-		if (dailyTrans)
-		{
-			dailyTransactionFinder(objData);
-			return;
-		}
-
 		// Cashbook Transactions
-		const offlineTransactionsByDate = await TransactionDB.transByDateAndcashbbokId("", "", (fromCashbook ? fields?.cashbookId : cashbookId), context.currency?.id, "custom");
-		if (context.isConnected) {
-			// let oldDailyTranscations = [];
-			// globalState.dailyTransactions.find(trans => {
-			// 	if (trans.cashbookId === (fromCashbook ? fields?.cashbookId : cashbookId) && trans.currencyId === context.currency?.id)
-			// 	oldDailyTranscations.push(trans);
-			// });
-
-			const oldDailyTranscations = globalState.dailyTransactions.filter( trans => 
-				trans.cashbookId === (fromCashbook ? fields?.cashbookId : cashbookId) && trans.currencyId === context.currency?.id
-			);
-
-			if (oldDailyTranscations?.length <= 0)
-			{
-				let offlineData = customerDataFinder(SortData(offlineTransactionsByDate));
-				dataManager(objData, { dailyTransactions: [...offlineData, ...globalState.dailyTransactions] });
-				return;
-			}
-		} else {
-			// if (offlineTransactions?.length >= 1)
+		const offlineTransactionsByDate = await TransactionDB.transactionByDateAndCashbookIdAndCurrencyId("", "", (fromCashbook ? fields?.cashbookId : cashbookId), context.currency?.id, "custom");
+		if (!context.isConnected) {
 			if (offlineTransactionsByDate?.length >= 1)
 			{
-				dataManager(objData, { dailyTransactions: [...offlineTransactionsByDate] });
+				dataManager(objData);
 				return;
 			}
 		}
@@ -462,34 +599,6 @@ const CashIn = (props) =>
 		dataManager(objData);
 		return;
 	};
-
-	const dailyTransactionFinder = async (objData) =>
-	{
-		const offlineTransactions = await TransactionDB.getTransactions();
-		if (context.isConnected) {
-			const oldTranscations = globalState.transactions.filter( trans =>
-			    trans.cashbookId === (fromCashbook ? fields?.cashbookId : cashbookId) && trans.currencyId === context.currency?.id
-			);
-
-			if (oldTranscations?.length <= 0)
-			{
-				// const offlineTransactionsByDate = await TransactionDB.transactionsByDate("", "", (fromCashbook ? fields?.cashbookId : cashbookId), context.currency?.id, "custom");
-				// dataManager(objData, { transactions: [...offlineTransactionsByDate, ...globalState.transactions] });
-				let offlineData = customerDataFinder(SortData(offlineTransactions));
-				dataManager(objData, { transactions: [...offlineData, ...globalState.transactions] });
-				// dataManager(objData, { transactions: [...offlineTransactions, ...globalState.transactions] });
-				return;
-			}
-		} else {
-			if (offlineTransactions?.length >= 1)
-			{
-				dataManager(objData, { transactions: [...offlineTransactions] });
-				return;
-			}
-		}
-
-		dataManager(objData);
-	}
 
 	const dataManager = async (objData, ...options) =>
 	{
@@ -525,14 +634,14 @@ const CashIn = (props) =>
 		}
 
 		let In_Out_Amount = cloneSummary[summaryIndex][fields.type ? "cashIn" : "cashOut"];
-		let newAmount = (Number.parseInt(In_Out_Amount) + Number.parseInt(fields.amount))
-		let totalProfit = (Number.parseInt(cloneSummary[summaryIndex].totalProfit) + Number.parseInt(fields.profit))
+		let newAmount = (Number(In_Out_Amount) + Number(fields.amount));
+		let totalProfit = (Number(cloneSummary[summaryIndex].totalProfit || 0) + Number(fields.profit))
 		cloneSummary[summaryIndex][fields.type ? "cashIn" : "cashOut"] = newAmount;
 		cloneSummary[summaryIndex].totalProfit = totalProfit;
 		cloneCustomers[cashBookIndex].summary = cloneSummary;
 
 		const customerData = await Customers.getCustomers();
-		const findCust = customerData.find(customer => customer._id === (fromCashbook ? fields?.cashbookId : cashbookId));
+		const findCust = customerData.find(customer => customer._id === (fromCashbook ? fields.cashbookId : cashbookId));
 		Customers.updateCustomer(
 			findCust.id,
 			findCust.firstName,
@@ -545,7 +654,6 @@ const CashIn = (props) =>
 			findCust.userId
 		);
 
-
 		dispatch("setCustomers", cloneCustomers);
 		if (context.currency?.id === fields.currencyId)
 		{
@@ -557,10 +665,7 @@ const CashIn = (props) =>
 				dispatch("setTransactions", options[0]?.transactions ? [...options[0]?.transactions, newTransaction] : [...globalState.transactions, newTransaction]);
 				// dispatch("setTransactions", options[0]?.transactions ? [...options[0]?.transactions, objData.data] : [...globalState.transactions, objData.data]);
 			}
-			dispatch("setDailyTransactions", options[0]?.dailyTransactions ? [...options[0]?.dailyTransactions, newTransaction] : [...globalState.dailyTransactions, newTransaction]);
-			// dispatch("setDailyTransactions", options[0]?.dailyTransactions ? [...options[0]?.dailyTransactions, objData.data] : [...globalState.dailyTransactions, objData.data]);
 		};
-
 
 		showToast();
 		setFields(initState);
@@ -570,7 +675,7 @@ const CashIn = (props) =>
 
 	const customerDataFinder = (data) =>
 	{
-		return data.filter(trans =>
+		return data?.filter(trans =>
 			trans.cashbookId === (fromCashbook ? fields?.cashbookId : cashbookId) && trans.currencyId === context.currency?.id
 		);
 	};

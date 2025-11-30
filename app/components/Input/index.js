@@ -10,7 +10,7 @@ const Input = (props) =>
         <TextInput
             {...props}
             placeholder={props.placeholder}
-            style={[Style.input, props.style]}
+            style={[Style.input, props.style, props.disabled && { backgroundColor: "#f9f9f9ff", color: "#999" }]}
             editable={!props.disabled}
             placeholderTextColor={isAndroid ? "#808080" : "#C7C7CD"}
         />

@@ -32,12 +32,6 @@ const kamil = () =>
         const newGlobalState = {...globalState, oppositeTransactions: newOppoTransactions};
         return newGlobalState;
     }
-    const setDailyTransactions = (dailyTransactions = [], globalState) =>
-    {
-        const newDailyTransactions = [...dailyTransactions];
-        const newGlobalState = {...globalState, dailyTransactions: newDailyTransactions};
-        return newGlobalState;
-    }
     const setSelfCash = (selfCash = [], globalState) =>
     {
         const newSelfCash = [...selfCash];
@@ -62,11 +56,33 @@ const kamil = () =>
         const newGlobalState = {...globalState, currencyRate: newCurrencyRate};
         return newGlobalState;
     }
+    const setOpeningBalances = (openingBalances = [], globalState) =>
+    {
+        const newOpeningBalances = [...openingBalances];
+        const newGlobalState = {...globalState, openingBalances: newOpeningBalances};
+        return newGlobalState;
+    }
+    const setWeeklyBalances = (weeklyBalances = [], globalState) =>
+    {
+        const newWeeklyBalances = [...weeklyBalances];
+        const newGlobalState = {...globalState, weeklyBalances: newWeeklyBalances};
+        return newGlobalState;
+    }
 
     const clearStore = () =>
     {
         const newGlobalState = {
-            customers: [], oppositeCustomers: [], currencies: [], currencyRate: [], transactions: [], oppositeTransactions: [], dailyTransactions: [], selfCash: [], contacts: [], sliders: [],
+            customers: [],
+            oppositeCustomers: [],
+            currencies: [],
+            currencyRate: [],
+            transactions: [],
+            oppositeTransactions: [],
+            selfCash: [],
+            contacts: [],
+            sliders: [],
+            openingBalances: [],
+            weeklyBalances: []
         };
         return newGlobalState;
     }
@@ -78,11 +94,12 @@ const kamil = () =>
             oppositeCustomers: [],
             currencies: [],
             transactions: [],
-            dailyTransactions: [],
             selfCash: [],
             currencyRate: [],
             contacts: [],
             sliders: [],
+            openingBalances: [],
+            weeklyBalances: [],
             oppositeTransactions: []
         }
     }
@@ -93,12 +110,13 @@ const kamil = () =>
         setCurrencies,
         setTransactions,
         setOppositeTransactions,
-        setDailyTransactions,
         setSelfCash,
         setContacts,
         clearStore,
         setSliders,
         setCurrencyRate,
+        setOpeningBalances,
+        setWeeklyBalances,
     });
 }
 

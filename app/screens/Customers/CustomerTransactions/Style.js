@@ -172,6 +172,7 @@ export default StyleSheet.create({
         alignItems: "center",
         columnGap: 10,
         marginTop: "auto",
+        paddingTop: 5,
     },
     cashButton: {
         width:"48.5%"
