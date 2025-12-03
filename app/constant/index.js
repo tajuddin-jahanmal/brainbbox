@@ -9,6 +9,7 @@ export default {
     white: "#ffffff",
     green: "#0c930c",
     active: "#f5c518",
+    disabledBG: "#f9f9f9ff",
 }
 
 export const headHeight = Constants.statusBarHeight;

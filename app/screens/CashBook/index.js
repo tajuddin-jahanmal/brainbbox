@@ -190,6 +190,13 @@ const CashBook = (props) =>
 		})();
 	}, [context.currency.id]);
 
+	
+	const dateMaker = (date) =>
+	{
+		const newDate = new Date(date.toString());
+		return newDate.getFullYear() + "/" + Number.parseInt(newDate.getMonth()+1) + "/" + newDate.getDate()
+	}
+
 	const paginationFunction = (data) =>
 	{
 		const firstIndex = lastIndex - paginateDataLength;
@@ -197,12 +204,6 @@ const CashBook = (props) =>
 		onChange(data?.length, "totalDataLength");
 		return recorder;
 	};
-
-	const dateMaker = (date) =>
-	{
-		const newDate = new Date(date.toString());
-		return newDate.getFullYear() + "/" + Number.parseInt(newDate.getMonth()+1) + "/" + newDate.getDate()
-	}
 
 	const nextPage = () =>
 	{

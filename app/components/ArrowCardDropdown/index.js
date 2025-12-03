@@ -24,6 +24,7 @@ const ArrowCardDropdown = (props) =>
 
 	const titleContainerhandler = () =>
 	{
+		if (props.disabled) return;
 		if (props?.content?.length >= 1)
 		{
 			onChange(!fields.show, "show")
@@ -51,10 +52,23 @@ const ArrowCardDropdown = (props) =>
 	}
 
 	return (
-		<Card {...props} style={{...Style.arrowCard, ...props.style, ...{...fields.show && {paddingBottom: 10}}}}>
-			<TouchableOpacity style={Style.titleContainer} onPress={titleContainerhandler}>
+		<Card
+			{...props}
+			style={{
+				...Style.arrowCard,
+				...props.style,
+				...{...fields.show && {paddingBottom: 10}},
+				...props.disabled && Style.disabledArrowCard
+			}}
+		>
+			<TouchableOpacity style={Style.titleContainer} onPress={titleContainerhandler} activeOpacity={props.disabled ? 1 : 0.6}>
 				<Text>{props.title}</Text>
-				{props?.content?.length >= 1 && <Entypo style={fields.show && Style.chevron} name="chevron-small-right" size={24} color={Colors.textColor} />}
+				{props?.content?.length >= 1 && <Entypo
+					style={fields.show && Style.chevron}
+					name="chevron-small-right"
+					size={24}
+					color={props.disabled ? "#6d6d6d72" : Colors.textColor}
+				/>}
 			</TouchableOpacity>
 			{
 				(props.content && fields.show) && props.content?.map((value, index) => (

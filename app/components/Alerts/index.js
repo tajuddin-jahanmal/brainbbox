@@ -160,7 +160,7 @@ const LogoutAlert = (props) => {
         ...props?.confirmButtonTextStyle 
       }}
       cancel={true}
-      cancelText={props?.cancelText}
+      cancelText={props?.cancelText || language?.cancel}
       onCancelPressed={props?.onCancel}
       {...props}
     />

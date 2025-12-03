@@ -1,9 +1,14 @@
 import { StyleSheet } from "react-native";
+import Colors from "../../constant";
 
 export default StyleSheet.create({
     arrowCard: {
         marginTop: 5,
         padding: 0,
+        backgroundColor: Colors.white,
+    },
+    disabledArrowCard: {
+        backgroundColor: Colors.disabledBG,
     },
     titleContainer: {
         width: "100%",

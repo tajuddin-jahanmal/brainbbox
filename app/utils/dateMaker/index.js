@@ -31,7 +31,8 @@ export function getWeekRange(date) {
 
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999); // end of week
+  // sunday.setHours(23, 59, 59, 999); // end of week
+  sunday.setHours(23, 59, 59, 0); // end of week
 
   return {
     weekStart: monday,

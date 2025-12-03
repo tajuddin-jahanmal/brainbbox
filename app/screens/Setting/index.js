@@ -548,6 +548,7 @@ const Setting = (props) =>
                                 content={[{key: "dailyReport", value: language.dailyReport, subContent: fields.currencies}]}
                                 contenthandler={(key, currencyId) => contenthandler(key, currencyId)}
                                 cardHandler={() => {}}
+                                disabled={!context.isConnected}
                             />
                             <ArrowCardDropdown
                                 title={language.balanceSheet}

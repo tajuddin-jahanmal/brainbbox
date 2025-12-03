@@ -175,7 +175,7 @@ export const customerReportHTML = (ownerFullName, data, currencyCode, forCountin
 						<span class="circle circle2"></span>
 					</div>
 					<p class="reportTxt">${customerFullName}</p>
-					<p class="reportTxt date">${new Date(new Date()).toLocaleString()}</p>
+					<p class="reportTxt date">${new Date(new Date()).toISOString().slice(0, 10)}</p>
 					<table>
 						<thead>
 							<tr>
@@ -383,8 +383,8 @@ export const dailyReportHTML = (ownerFullName, dailyBalance, currencyCode, date)
 						<span class="circle"></span>
 						<span class="circle circle2"></span>
 					</div>
-					<p class="date">Daily Report of: ${new Date(date).toLocaleDateString()}</p>
-					<p >Generate Date: ${new Date(new Date()).toLocaleString()}</p>
+					<p class="date">Daily Report of: ${new Date(date).toISOString().slice(0, 10)}</p>
+					<p >Generate Date: ${new Date(new Date()).toISOString().slice(0, 10)}</p>
 					<p>Opening Balance: ${dailyBalance["openingBalance"]}</p>
 					<table>
 						<thead>
@@ -584,7 +584,7 @@ export const balanceSheetReportHTML = (ownerFullName, data, currencyCode, sum) =
 						<span class="circle circle2"></span>
 					</div>
 					<p class="balanceSheet">Balance Sheet Report</p>
-					<p class="text">Generate Date: ${new Date(new Date()).toLocaleString()}</p>
+					<p class="text">Generate Date: ${new Date(new Date()).toISOString().slice(0, 10)}</p>
 					<table>
 						<thead>
 							<tr>

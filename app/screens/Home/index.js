@@ -6,7 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/core";
 import { useNavigation } from "expo-router";
 import { useContext, useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 import Button from "../../components/Button";
 import Card from "../../components/Card";
 import Header from "../../components/Header";
@@ -32,6 +32,7 @@ const Home = (props) =>
 {
 	const isFocused = useIsFocused()
 	const [isLoading, setIsLoading] = useState(false);
+	const [loadingData, setLoadingData] = useState(false);
 	const [globalState, dispatch] = useStore();
 	const navigation = useNavigation();
 	const { navigate } = isAndroid ? props.navigation : navigation;
@@ -168,6 +169,7 @@ const Home = (props) =>
 	const syncInitialData = async (user, customer) => {
 	try {
 		setIsLoading(true);
+		setLoadingData(true);
 		
 		// Fetch cashbook data
 		const response = await fetch(serverPath("/get/cashbook"), {
@@ -291,6 +293,7 @@ const Home = (props) =>
 		Alert.alert("Info!", "Error Code: 2");
 	} finally {
 		setIsLoading(false);
+		setLoadingData(false);
 	}
 	};
 
@@ -460,9 +463,10 @@ const Home = (props) =>
 				// Load offline data if no customers in state AND no customers in local DB
 				// if (globalState.customers.length <= 0 && localCustomers.length <= 0 && !isFirstTime) {
 				if (globalState.customers.length <= 0 && !isFirstTime) {
-						const [offlineCurrencies, offlineOpeningBalances] = await Promise.all([
+						const [offlineCurrencies, offlineOpeningBalances, offlineTransactions] = await Promise.all([
 						Currency.getCurrencies(),
-						OpeningBalance.getOpeningBalance()
+						OpeningBalance.getOpeningBalance(),
+						Transaction.getTransactionsByCurrencyId(context.currency?.id)
 					]);
 
 					await customersSetter();
@@ -476,6 +480,10 @@ const Home = (props) =>
 
 					if (globalState.openingBalances.length <= 0) {
 						dispatch("setOpeningBalances", offlineOpeningBalances);
+					}
+
+					if (globalState.transactions.length <= 0) {
+						dispatch("setTransactions", offlineTransactions);
 					}
 
 					if (!context.currency) {
@@ -1104,6 +1112,20 @@ const Home = (props) =>
 		<View style={Style.container}>
 			{/* <Header title={`${language.hi} ${context.isGuest ? language.guest : makeCustomerName()}`} noBack search searchOnPress={() => setTokenModalVisible(true)} /> */}
 			<Header title={`${language.hi} ${context.isGuest ? language.guest : makeCustomerName()}`} noBack />
+
+			{loadingData && <View style={{
+				zIndex: 99,
+				flexDirection: "row",
+				alignItems: "center",
+				justifyContent: "center",
+				gap: 15,
+				marginBottom: 10,
+			}}>
+				<ActivityIndicator size={22} color={Colors.white} />
+				<Text style={{color: Colors.white}}>Loading Transactions</Text>
+			</View>}
+
+
 			<View style={Style.content}>
 				<View style={Style.redCircle}></View>
 				{/* <View style={Style.currencies}>
@@ -1134,9 +1156,8 @@ const Home = (props) =>
 					</Card> */}
 				</View>
 
-
 				{ offlineQueueLength >= 1 && 
-					<Button style={styles.btn} onPress={uploadData} isLoading={isLoading} disabled={isLoading}>{language.uploadData}</Button>
+					<Button style={styles.btn} onPress={uploadData} isLoading={isLoading} disabled={isLoading || !context.isConnected}>{language.uploadData}</Button>
 				}
 				<TokenModal
 					visible={tokenModalVisible}

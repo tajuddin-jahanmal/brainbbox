@@ -369,6 +369,20 @@ const ExchangeMoneyProvider = (props) =>
       }
     })();
   }, [state.currency, state.user]);
+  useEffect(() =>
+  {
+    (async () =>
+    {
+      if (state.isConnected && state.user && state.customer && !state.isGuest)
+      {
+        try {
+          await uploadMissingWeeklyBalances();
+        } catch (error) {
+          console.error("uploadMissingWeeklyBalances 2 sync error:", error);
+        }
+      }
+    })();
+  }, [globalState.transactions]);
 
   async function syncWeeklyBalancesFromServer() {
     const data = await WeeklyBalances.getWeeklyBalances(state?.customer?.id, state?.currency?.id);

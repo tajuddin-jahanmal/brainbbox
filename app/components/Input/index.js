@@ -1,5 +1,6 @@
 import React from "react";
 import { TextInput } from "react-native";
+import Colors from "../../constant";
 import { isAndroid } from "../../constant/index.js";
 import Style from "./style.js";
 
@@ -10,7 +11,7 @@ const Input = (props) =>
         <TextInput
             {...props}
             placeholder={props.placeholder}
-            style={[Style.input, props.style, props.disabled && { backgroundColor: "#f9f9f9ff", color: "#999" }]}
+            style={[Style.input, props.style, props.disabled && { backgroundColor: Colors.disabledBG, color: "#999" }]}
             editable={!props.disabled}
             placeholderTextColor={isAndroid ? "#808080" : "#C7C7CD"}
         />
