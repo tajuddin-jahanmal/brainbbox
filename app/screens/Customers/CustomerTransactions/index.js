@@ -65,6 +65,7 @@ const CustomerTransactions = (props) =>
     const lastIndex = fields.currentPage * paginateDataLength;
     // const [selectedDate, setSelectedDate] = useState(new Date());
     // const datePickerRef = useRef(null);
+	const fullListRef = useRef([]);
 
     const onChange = (value, type) =>
     {
@@ -88,76 +89,94 @@ const CustomerTransactions = (props) =>
 	
 	// console.log(globalState.transactions, "globalState.transactions");
 
-	useEffect(() =>
-	{
+
+	useEffect(() => {
+		if (!isFocused) return;
+
+		// Load only ONCE per focus
+		loadCustomerTransactions();
+	}, [isFocused, globalState.transactions]);
+
+	// Load transactions only once
+	const loadCustomerTransactions = async () => {
+		try {
+			setIsLoading(true);
+
+			const all = globalState.transactions.length
+				? globalState.transactions
+				: await TransactionDB.getTransactions();
+
+			const filtered = all.filter(t =>
+				t.cashbookId === cashbookId &&
+				t.currencyId === context.currency?.id
+			);
+
+			const sorted = SortData(filtered);
+
+			// Recalculate runningBalance only once
+			let balance = 0;
+			const finalData = sorted.reverse().map(t => {
+				balance += t.type ? t.amount : -t.amount;
+				return { ...t, runningBalance: balance };
+			});
+
+			fullListRef.current = finalData.reverse();         // store full list for pagination
+			paginationFunction();                               // first page load
+		} catch (e) {
+			console.log(e);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+
+	// useEffect(() =>
+	// {
 		
-		(async() =>
-		{
-			if(!isFocused)
-				return
-			console.log("EFFECT")
+	// 	(async() =>
+	// 	{
+	// 		if(!isFocused)
+	// 			return
+	// 		console.log("EFFECT")
 		
-			if (cashbookId)
-			{
-				const cashbookUser = globalState.customers?.find(customer => customer.id || customer.summary[0].cashbookId === cashbookId);
-				const offlineTransactions = await TransactionDB.getTransactions();
-				const offlineTransactionsByDate = await TransactionDB.transactionByDateAndCashbookIdAndCurrencyId("", "", cashbookId, context.currency?.id, "custom");
+	// 		if (cashbookId)
+	// 		{
+	// 			const cashbookUser = globalState.customers?.find(customer => customer.id || customer.summary[0].cashbookId === cashbookId);
+	// 			const offlineTransactions = await TransactionDB.getTransactions();
 				
-				try {
-					if (!cashbookId)
-						return Alert.alert("Info!", "No Cashbook Selected!");
-					if(!cashbookUser)
-						return Alert.alert("Info!", "No Cashbook Found By THis Name!")
+	// 			try {
+	// 				if (!cashbookId)
+	// 					return Alert.alert("Info!", "No Cashbook Selected!");
+	// 				if(!cashbookUser)
+	// 					return Alert.alert("Info!", "No Cashbook Found By THis Name!")
 
-					setIsLoading(true);
-					if (globalState.transactions.length >= 1)
-					{
-						let data = customerDataFinder(globalState.transactions);
-						if (data.length >= 1)
-							return;
-					};
+	// 				setIsLoading(true);
+	// 				if (globalState.transactions.length >= 1)
+	// 				{
+	// 					let data = customerDataFinder(globalState.transactions);
+	// 					if (data.length >= 1)
+	// 						return;
+	// 				};
 
-					// if (context.isConnected)
-					// {
-					// 		const response = await fetch(serverPath("/get/cashbook_transactions"), {
-					// 			method: "POST",
-					// 			headers: {
-					// 					"Content-Type": "Application/JSON",
-					// 			},
-					// 			body: JSON.stringify({ cashbookId, currencyId: context.currency.id, providerId: context.user.id })
-					// 		});
-							
-					// 		const objData = await response.json();
-					// 		if (objData.status === "success" && objData.data.length > 0)
-					// 		{
-					// 			dispatch("setTransactions", [...globalState.transactions, ...objData.data])
-					// 			setDataProvider(dataProvider.cloneWithRows([...paginationFunction(SortData(objData.data))]));
-					// 			return;
-					// 		}
-					// 		if (objData.status === "failure")
-					// 			Alert.alert("Info!", objData.message)
-					// 		setIsLoading(false);
-					// } else {
-						if (offlineTransactions.length >= 1 && dataProvider._data.length <= 0)
-						{
-							let data = customerDataFinder(offlineTransactions);
-							if (data.length >= 1)
-							{
-								dispatch("setTransactions", [...globalState.transactions, ...offlineTransactions]);
-								return;
-							};
-							setIsLoading(false);
-						}
-					// }
-					setIsLoading(false);
-					return;
-				} catch (error) {
-					console.log(error);
-					setIsLoading(false)
-				}
-			}
-		})();
-	}, [globalState.transactions, fields.currentPage, isFocused]);
+	// 				if (offlineTransactions.length >= 1 && dataProvider._data.length <= 0)
+	// 				{
+	// 					let data = customerDataFinder(offlineTransactions);
+	// 					if (data.length >= 1)
+	// 					{
+	// 						dispatch("setTransactions", [...globalState.transactions, ...offlineTransactions]);
+	// 						return;
+	// 					};
+	// 					setIsLoading(false);
+	// 				}
+	// 				setIsLoading(false);
+	// 				return;
+	// 			} catch (error) {
+	// 				console.log(error);
+	// 				setIsLoading(false)
+	// 			}
+	// 		}
+	// 	})();
+	// }, [globalState.transactions, fields.currentPage, isFocused]);
 
 	useEffect(() => {
 		(async () =>
@@ -192,32 +211,7 @@ const CustomerTransactions = (props) =>
 				return
 			if (fields.from && fields.to)
 			{
-				// if (context.isConnected)
-				// {
-				// 	const response = await fetch(serverPath("/get/transaction_by_date"), {
-				// 		method: "POST",
-				// 		headers: {
-				// 				"Content-Type": "Application/JSON",
-				// 		},
-				// 		body: JSON.stringify({
-				// 			cashbookId,
-				// 			currencyId: context.currency?.id,
-				// 			providerId: context.user.id,
-				// 			fromDate: fields.from,
-				// 			toDate: fields.to,
-				// 			type: "custom",
-				// 		})
-				// 	});
-			
-				// 	const objData = await response.json();
-				// 	if (objData.status === "success")
-				// 		setDataProvider(dataProvider.cloneWithRows([...paginationFunction(SortData(objData.data))]));
-			
-				// 	if (objData.status === "failure")
-				// 		Alert.alert("Info!", objData.message)
-				// } else {
-					dataFinderByDate();
-				// }
+				dataFinderByDate();
 			}
 		})();
 	}, [fields.from, fields.to, isFocused]);
@@ -245,10 +239,21 @@ const CustomerTransactions = (props) =>
 
 	const paginationFunction = (data) =>
 	{
-		const firstIndex = lastIndex - paginateDataLength;
-		const recorder = data.slice(firstIndex, lastIndex);
-		onChange(data.length, "totalDataLength");
-		return recorder;
+		const pageSize = paginateDataLength;
+		const total = fullListRef.current.length;
+
+		const start = (fields.currentPage - 1) * pageSize;
+		const end = start + pageSize;
+
+		const pageData = fullListRef.current.slice(start, end);
+
+		onChange(total, "totalDataLength");
+		setDataProvider(prev => prev.cloneWithRows(pageData));
+
+		// const firstIndex = lastIndex - paginateDataLength;
+		// const recorder = data.slice(firstIndex, lastIndex);
+		// onChange(data.length, "totalDataLength");
+		// return recorder;
 	};
 
 	const customerDataFinder = (data) =>
@@ -273,25 +278,6 @@ const CustomerTransactions = (props) =>
 		
 		return SortData(cashTransactions);
 	};
-
-	// useEffect(() =>
-	// {
-	// 	(async () =>
-	// 	{
-			// if(!isFocused)
-			// 	return
-			// const offlineTrans = await TransactionDB.getTransactions();
-			// offlineTrans.forEach(element => {
-			// 		console.log(element);
-			// });
-			// TransactionDB.deleteTransaction(786);
-			// TransactionDB.deleteTransaction("xTHx$xd!8uTa");
-			// TransactionDB.deleteTransaction(512);
-			// TransactionDB.deleteTransaction(503);
-			// TransactionDB.deleteTransaction(416);
-			// console.log(dataProvider._data);
-	// 	})();
-	// }, [isFocused]);
 
 	const deleteHandler = async (item) =>
 	{
@@ -563,7 +549,6 @@ const CustomerTransactions = (props) =>
 
 	const print = async () =>
 	{
-		const offlineTransactionsByDate = await TransactionDB.transactionByDateAndCashbookIdAndCurrencyId("", "", cashbookId, context.currency?.id, "custom");
 		let data = [];
 
 		if (fields.from && fields.to) {
@@ -647,6 +632,11 @@ const CustomerTransactions = (props) =>
 			onChange(fields.currentPage - 1, "currentPage");
 	}
 
+	useEffect(() => {
+		paginationFunction();
+	}, [fields.currentPage]);
+
+
 	const editHandler = (item) =>
 	{
 		navigate(item.type ? "CashIn" : "CashOut", {
@@ -656,16 +646,17 @@ const CustomerTransactions = (props) =>
 		});
 	}
 
-	const handleRowOpen = (ref) => {
-		if (openRowRef.current && openRowRef.current !== ref) {
-			openRowRef.current.close();     // close previously open row
-		}
-		openRowRef.current = ref;
-	};
-	const handleRowClose = (ref) => {
-		if (openRowRef.current === ref) openRowRef.current = null;
-	};
-	const closeAnyOpen = () => openRowRef.current?.close();
+	// THIS CODE WAS FOR TRANSACTION WISPABLE
+	// const handleRowOpen = (ref) => {
+	// 	if (openRowRef.current && openRowRef.current !== ref) {
+	// 		openRowRef.current.close();     // close previously open row
+	// 	}
+	// 	openRowRef.current = ref;
+	// };
+	// const handleRowClose = (ref) => {
+	// 	if (openRowRef.current === ref) openRowRef.current = null;
+	// };
+	// const closeAnyOpen = () => openRowRef.current?.close();
 	
 	const NORMAL = "NORMAL";
 	

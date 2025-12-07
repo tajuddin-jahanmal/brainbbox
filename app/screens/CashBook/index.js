@@ -1,6 +1,6 @@
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useIsFocused } from "@react-navigation/core";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
 import { DataProvider, LayoutProvider, RecyclerListView } from "recyclerlistview";
 import Button from "../../components/Button";
@@ -20,6 +20,7 @@ import language from "../../localization";
 import useStore from "../../store/store";
 import { getWeekRange } from '../../utils/dateMaker';
 import serverPath from '../../utils/serverPath';
+import SortData from '../../utils/SortData';
 import GetResponsiveFontSize from "../../utils/TransactionFontSizeManager";
 import Style from "./Style";
 
@@ -47,7 +48,9 @@ const CashBook = (props) =>
 	const [isLoading, setIsLoading] = useState(false);
 	const context = useContext(ExchangeMoneyContext);
 	const paginateDataLength = 50;
-	const lastIndex = fields.currentPage * paginateDataLength;
+	// const lastIndex = fields.currentPage * paginateDataLength;
+
+	const fullListRef = useRef([]);
 
 	const onChange = (value, type) =>
 	{
@@ -138,71 +141,89 @@ const CashBook = (props) =>
 		})();
 	}, [globalState.customers, globalState.openingBalances, context.currency.id, isFocused]);
 
-	useEffect(() =>
-	{
-		(async () =>
-		{
-			if(!isFocused)
-				return;
+
+
+	useEffect(() => {
+		if (!isFocused) return;
+
+		loadCashbookTransactions();
+	}, [isFocused, context.currency.id, globalState.transactions]);
+
+	useEffect(() => {
+		paginationFunction();
+	}, [fields.currentPage]);
+
+	const loadCashbookTransactions = () => {
+		const sorted = SortData(
+			globalState.transactions.filter(t => t.currencyId === context.currency.id)
+		);
+
+		fullListRef.current = sorted;
+		paginationFunction();
+	};
+
+
+
+
+	// useEffect(() =>
+	// {
+	// 	(async () =>
+	// 	{
+	// 		if(!isFocused)
+	// 			return;
 			
-			const data = await TransactionDB.getTransactionsByCurrencyId(context?.currency?.id);
-			if (data?.length >= 1)
-				setDataProvider(dataProvider.cloneWithRows([...paginationFunction(data)]));
+	// 		// const data = await TransactionDB.getTransactionsByCurrencyId(context?.currency?.id);
+	// 		const filteredTransactions = SortData(globalState.transactions?.filter(t => t.currencyId === context?.currency?.id));
 
-			if (data?.length === 0 && dataProvider._data?.length >= 1)
-				setDataProvider(dataProvider.cloneWithRows([]));
+	// 		if (filteredTransactions?.length >= 1)
+	// 			setDataProvider(dataProvider.cloneWithRows([...paginationFunction(filteredTransactions)]));
 
-			// const response = await fetch(serverPath("/get/all_transactions"), {
-			// 	method: "POST",
-			// 	headers: {
-			// 		"Content-Type": "Application/JSON",
-			// 	},
-			// 	body: JSON.stringify({ currencyId: context.currency.id, type: "owner", providerId: context.user.id })
-			// });
+	// 		if (filteredTransactions?.length === 0 && dataProvider._data?.length >= 1)
+	// 			setDataProvider(dataProvider.cloneWithRows([]));
 
-			// const objData = await response.json();
-			// if (objData.status === "success")
-			// 	setDataProvider(dataProvider.cloneWithRows([...paginationFunction(objData.data)]));
-	
-			// if (objData.status === "failure")
-			// 	return Alert.alert("Info!", objData.message);
-		})();
-	}, [globalState.transactions, fields.currentPage, isFocused]);
+	// 	})();
+	// }, [globalState.transactions, fields.currentPage, isFocused]);
 
-	useEffect(() =>
-	{
-		(async () =>
-		{
-			if(!isFocused)
-				return;
+	// useEffect(() =>
+	// {
+	// 	(async () =>
+	// 	{
+	// 		if(!isFocused)
+	// 			return;
 			
-			const data = await TransactionDB.getTransactionsByCurrencyId(context?.currency?.id);
+	// 		// const data = await TransactionDB.getTransactionsByCurrencyId(context?.currency?.id);
+	// 		const filteredTransactions = SortData(globalState.transactions?.filter(t => t.currencyId === context?.currency?.id));
 			
-			if (data?.length >= 1)
-			{
-				setFields(prev => ({
-					...prev,
-					currentPage: 1,
-					totalDataLength: 0,
-				}));
-				setDataProvider(dataProvider.cloneWithRows([...paginationFunction(data)]));
-			}
-		})();
-	}, [context.currency.id]);
-
-	
-	const dateMaker = (date) =>
-	{
-		const newDate = new Date(date.toString());
-		return newDate.getFullYear() + "/" + Number.parseInt(newDate.getMonth()+1) + "/" + newDate.getDate()
-	}
+	// 		if (filteredTransactions?.length >= 1)
+	// 		{
+	// 			setFields(prev => ({
+	// 				...prev,
+	// 				currentPage: 1,
+	// 				totalDataLength: 0,
+	// 			}));
+	// 			setDataProvider(dataProvider.cloneWithRows([...paginationFunction(filteredTransactions)]));
+	// 		}
+	// 	})();
+	// }, [context.currency.id]);
 
 	const paginationFunction = (data) =>
 	{
-		const firstIndex = lastIndex - paginateDataLength;
-		const recorder = data.slice(firstIndex, lastIndex);
-		onChange(data?.length, "totalDataLength");
-		return recorder;
+		// const firstIndex = lastIndex - paginateDataLength;
+		// const recorder = data.slice(firstIndex, lastIndex);
+		// onChange(data?.length, "totalDataLength");
+		// return recorder;
+
+
+		const pageSize = paginateDataLength;
+		const total = fullListRef.current.length;
+
+		const start = (fields.currentPage - 1) * pageSize;
+		const end = start + pageSize;
+
+		const pageData = fullListRef.current.slice(start, end);
+
+		onChange(total, "totalDataLength");
+		setDataProvider(prev => prev.cloneWithRows(pageData));
 	};
 
 	const nextPage = () =>
