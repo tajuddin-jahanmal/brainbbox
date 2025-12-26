@@ -248,6 +248,7 @@ const CustomerTransactions = (props) =>
 		const pageData = fullListRef.current.slice(start, end);
 
 		onChange(total, "totalDataLength");
+		
 		setDataProvider(prev => prev.cloneWithRows(pageData));
 
 		// const firstIndex = lastIndex - paginateDataLength;

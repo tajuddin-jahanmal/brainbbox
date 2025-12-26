@@ -86,7 +86,7 @@ const Customers = (props) =>
 				{
 					setIsLoading(true);
 					const filterData = [];
-					customerData.forEach(per => { filterData.push({...per, summary: JSON.parse(per.summary)}) });
+					customerData.forEach(per => { filterData.push({...per, summary: JSON.parse(per.summary)}) });					
 					dispatch("setCustomers", filterData);
 					setDataProvider(dataProvider.cloneWithRows([...SortCustomers(filterData)]));
 
@@ -154,20 +154,28 @@ const Customers = (props) =>
 
 	const rowRenderer = (type, item) =>
 	{
+		const summaries = [...(item.summary || item.customer?.summary || [])];
+		const summaryByCurrency = summaries.find(s => s.currencyId === context.currency.id);
+		const cash = summaryByCurrency ? summaryByCurrency.cashIn - summaryByCurrency.cashOut: "";
+
+
 		return (
-			<Card style={Style.card} onPress={() => navigate("CustomerTransactions", { cashbookId: item?.summary[0]?.cashbookId || item?._id || item?.id, customerName: makeCustomerName(item), fromCashbook: true })}>
-				<View style={{width: "100%"}}>
+			<Card style={{...Style.card, ...{...isRTL && {flexDirection: "row-reverse"}}}} onPress={() => navigate("CustomerTransactions", { cashbookId: item?.summary[0]?.cashbookId || item?._id || item?.id, customerName: makeCustomerName(item), fromCashbook: true })}>
+				<View>
 					<View
 						style={{...Style.flexRow, ...{...isRTL && {justifyContent: "flex-end"}}}}
 					>
-						<Text>{language.customer}: <Text numberOfLines={1}>{makeCustomerName(item)}</Text></Text>
+						{/* <Text>{language.customer}: <Text numberOfLines={1}>{makeCustomerName(item)}</Text></Text> */}
+						<Text numberOfLines={1}>{makeCustomerName(item)}</Text>
 					</View>
 					<View
 						style={{...Style.flexRow, ...{...isRTL && {justifyContent: "flex-end"}}}}
 					>
-						<Text>{language.phone}: <Text>{item?.customer?.countryCode || item?.countryCode}{item.customer?.phone || item.phone}</Text></Text>
+						{/* <Text>{language.phone}: <Text>{item?.customer?.countryCode || item?.countryCode}{item.customer?.phone || item.phone}</Text></Text> */}
+						<Text>{item?.customer?.countryCode || item?.countryCode}{item.customer?.phone || item.phone}</Text>
 					</View>
 				</View>
+				<Text style={{fontWeight: "bold", ...cash < 0 ? Style.cashOut : Style.cashIn}}>{cash}</Text>
 			</Card>
 		)
 	}
@@ -252,10 +260,6 @@ const Customers = (props) =>
 					</View>
 				}
 				
-				{/* <View style={Style.cashsCotainer}>
-					<Button style={{...Style.cashButton, ...Style.cashInButton}} onPress={() => navigate("CashIn", { fromCashbook: true })}>Cash In</Button>
-					<Button style={Style.cashButton} onPress={() => navigate("CashOut", { fromCashbook: true })}>Cash Out</Button>
-				</View> */}
 			</View>
 		</View>
 	) : null;

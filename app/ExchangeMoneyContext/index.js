@@ -356,6 +356,17 @@ const ExchangeMoneyProvider = (props) =>
   {
     (async () =>
     {
+      // THIS AVOID MULTIPLE SAME CODE IN PAGES TO LOAD TRANSACTIONS.
+      const offlineCurrencyTransactions = await TransactionDB.getTransactionsByCurrencyId(state?.currency?.id);
+      if (globalState.transactions.length <= 0 && offlineCurrencyTransactions.length >= 1)
+				return dispatch("setTransactions", [...offlineCurrencyTransactions]);
+    })();
+  }, [state.currency]);
+
+  useEffect(() =>
+  {
+    (async () =>
+    {
       if (state.isConnected && state.user && state.customer && !state.isGuest)
       {
         try {

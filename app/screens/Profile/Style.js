@@ -13,7 +13,7 @@ export default StyleSheet.create({
     },
     form: {
         marginTop: 10,
-        rowGap: 10,
+        rowGap: 8,
     },
     button: {
         marginTop: 30,
@@ -23,11 +23,17 @@ export default StyleSheet.create({
         color: Colors.textColor,
         fontSize: 13,
     },
+    textsContainer: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignContent: "center",
+    },
     founder: {
         color: Colors.textColor,
         fontSize: 13,
         textAlign: "center",
         marginTop: "auto",
+        paddingTop: 5,
         marginBottom: 45,
     },
 });

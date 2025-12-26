@@ -86,7 +86,7 @@ export default StyleSheet.create({
     },
     card: {
         marginBottom: 6,
-        display: "flex",
+        paddingHorizontal: 15,
         flexDirection: "row",
         alignItems: "center",
         justifyContent: 'space-between',

@@ -9,42 +9,19 @@ export default StyleSheet.create({
         zIndex: 99,
     },
     card: {
-        // backgroundColor: "#f1f4f9",
-        paddingVertical: 20,
+        paddingVertical: 30,
         paddingHorizontal: 15,
         zIndex: 10,
+    },
+    title: {
+        fontSize: 18,
+        fontWeight: "bold"
+    },
+    qrCodeContainer: {
         alignItems: "center",
-    },
-    buttonsCard: {
-        paddingTop: 5,
-        paddingBottom: 20,
-        paddingHorizontal: 15,
-        zIndex: 10,
-        marginTop: -6,
-        borderTopLeftRadius: 0,
-        borderTopRightRadius: 0,
-    },
-    paymentRe: {
-        fontWeight: "bold",
-        fontSize: 16,
-        color: Colors.textColor,
-        marginBottom: 10,
-    },
-    details: {
-        alignItems: 'center',
-    },
-    cash: {
-        fontSize: 22,
-        color: Colors.green,
-        fontWeight: "bold",
-    },
-    date: {
-        color: Colors.textColor,
-    },
-    reminded: {
-        fontSize: 16,
-        color: Colors.textColor,
-        marginTop: 10,
+        rowGap: 10,
+        backgroundColor: Colors.white,
+        paddingBottom: 10,
     },
     buttonsContainer: {
         flexDirection: "row",
@@ -66,4 +43,4 @@ export default StyleSheet.create({
         height: "100%",
         position: "absolute",
     },
-});
+})

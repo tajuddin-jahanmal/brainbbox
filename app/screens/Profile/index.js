@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/core";
 import React, { useContext, useEffect, useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import Button from "../../components/Button";
 import Header from "../../components/Header";
 import Input from "../../components/Input";
@@ -19,6 +19,8 @@ import Style from "./Style";
 //     clearSelfCashTable,
 //     clearTransactionsTable } from "../../DB";
 import Toast from 'react-native-toast-message';
+import QRcodeGenerator from '../../components/QRcodeGenerator';
+import Colors from "../../constant";
 import language from "../../localization";
 import useStore from "../../store/store";
 // import NetInfo from "@react-native-community/netinfo";
@@ -32,6 +34,18 @@ const Profile = (props) =>
         countryCode: "",
         phone: "",
         email: "",
+        showSocialLinks: false,
+        socialLinks: {
+            whatsapp: "",
+            facebook: "",
+            instagram: "",
+            telegram: "",
+            linkedin: "",
+            youtube: "",
+            tiktok: "",
+            twitter: ""
+        },
+        showQrCodeModal: false,
     };
 
     const showToast = () => {
@@ -49,6 +63,18 @@ const Profile = (props) =>
     const [ isLoading, setIsLoading ] = useState(false);
     const dispatch = useStore()[1];
 	const { goBack } = props.navigation;
+    const isRTL = language.isRtl;
+
+    const socialLinksConfig = [
+        { key: "whatsapp", label: language.whatsappNumber, keyboard: "phone-pad" },
+        { key: "facebook", label: language.facebookLink },
+        { key: "instagram", label: language.instagramLink },
+        { key: "telegram", label: language.telegramLink },
+        { key: "linkedin", label: language.linkedinLink },
+        { key: "youtube", label: language.youtubeLink },
+        { key: "tiktok", label: language.tiktokLink },
+        { key: "twitter", label: language.twitterLink },
+    ];
 
     const onChange = (value, type) =>
     {
@@ -61,6 +87,17 @@ const Profile = (props) =>
         }));
     };
 
+    const onChangeSocial = (text, key) => {
+        setFields(prev => ({
+            ...prev,
+            socialLinks: {
+            ...prev.socialLinks,
+            [key]: text
+            }
+        }));
+    };
+
+
     useEffect(() =>
     {
         // if (context.localAuth && context?.login && isFocused && !context.isGuest)
@@ -72,6 +109,18 @@ const Profile = (props) =>
                 countryCode: context.customer?.countryCode || "",
                 phone: context.customer?.phone || "",
                 email: context.customer?.email || "",
+                showSocialLinks: false,
+                socialLinks: {
+                    whatsapp: context.customer?.socialLinks?.whatsapp || "",
+                    facebook: context.customer?.socialLinks?.facebook || "",
+                    instagram: context.customer?.socialLinks?.instagram || "",
+                    telegram: context.customer?.socialLinks?.telegram || "",
+                    linkedin: context.customer?.socialLinks?.linkedin || "",
+                    youtube: context.customer?.socialLinks?.youtube || "",
+                    tiktok: context.customer?.socialLinks?.tiktok || "",
+                    twitter: context.customer?.socialLinks?.twitter || ""
+                },
+                showQrCodeModal: false,
             });
         }
     }, [isFocused]);
@@ -84,8 +133,13 @@ const Profile = (props) =>
 
             if(!credentials)
                 return Alert.alert('warning!', "Please Login To Your Account Again");
-                
-            const {message} = validator(fields);
+            
+            const fieldsClone = {...fields};
+
+            delete fieldsClone.showSocialLinks;
+            delete fieldsClone.showQrCodeModal;
+
+            const {message} = validator(fieldsClone);
             if(message)
                 return Alert.alert('Info!', message);
 
@@ -98,15 +152,15 @@ const Profile = (props) =>
                 headers: {
                     "Content-Type": "Application/JSON",
                 },
-                body: JSON.stringify({...fields, providerId: context.user.id, id: context?.customer?.id})
+                body: JSON.stringify({...fieldsClone, providerId: context.user.id, id: context?.customer?.id})
             });
 
             const objData = await response.json();
             if(objData.status === 'success')
             {
                 context.setState(prev => ({...prev, customer: {...context.customer, ...objData.data}}))
-                asyncstorageCustomer.firstName = fields.firstName;
-                asyncstorageCustomer.lastName = fields.lastName;
+                asyncstorageCustomer.firstName = fieldsClone.firstName;
+                asyncstorageCustomer.lastName = fieldsClone.lastName;
                 await AsyncStorage.setItem("@customer", JSON.stringify(asyncstorageCustomer));
                 showToast();
 				// ToastAndroid.show("Profile successfully changed", ToastAndroid.SHORT);
@@ -128,14 +182,49 @@ const Profile = (props) =>
             {/* <Header title={language.profile} goBack={goBack} logout logoutOnPress={() => context.logoutHandler()} /> */}
             <Header title={language.profile} goBack={goBack} />
             <View style={Style.content}>
-                <View style={Style.form}>
-                    <Input placeholder={language.firstName} value={fields.firstName} onChangeText={(text) => onChange(text, "firstName")}  disabled={isLoading || context.isGuest}/>
-                    <Input placeholder={language.lastName} value={fields.lastName} onChangeText={(text) => onChange(text, "lastName")}  disabled={isLoading || context.isGuest}/>
-                    <Input placeholder={language.phone} value={fields.countryCode + fields.phone} onChangeText={(text) => onChange(text, "phone")} keyboardType="numeric" onPressIn={() => onChange("", "newStyle")}  disabled={true}/>
-                    <Input placeholder={language.email} value={fields.email} onChangeText={(text) => onChange(text, "email")}  disabled={true}/>
-                    {context.isGuest && <Text style={Style.dataDeleteMsg}>{language.yourDataWillBeAutomatically}</Text>}
-                    <Button style={Style.button} onPress={updateHandler} isLoading={isLoading} disabled={isLoading || !context.isConnected || context.isGuest}>{language.update}</Button>
-                </View>
+                <ScrollView keyboardShouldPersistTaps="handled">
+                    <View style={Style.form}>
+                        <Input placeholder={language.firstName} value={fields.firstName} onChangeText={(text) => onChange(text, "firstName")}  disabled={isLoading || context.isGuest}/>
+                        <Input placeholder={language.lastName} value={fields.lastName} onChangeText={(text) => onChange(text, "lastName")}  disabled={isLoading || context.isGuest}/>
+                        <Input placeholder={language.phone} value={fields.countryCode + fields.phone} onChangeText={(text) => onChange(text, "phone")} keyboardType="numeric" onPressIn={() => onChange("", "newStyle")}  disabled={true}/>
+                        <Input placeholder={language.email} value={fields.email} onChangeText={(text) => onChange(text, "email")}  disabled={true}/>
+
+                        {
+                            (!context.isGuest && fields.showSocialLinks) &&
+                            <View style={{gap: 8}}>
+                                {
+                                    socialLinksConfig.map(({ key, label, keyboard }) => (
+                                    <Input
+                                        key={key}
+                                        placeholder={label}
+                                        value={fields?.socialLinks[key]}
+                                        keyboardType={keyboard || "default"}
+                                        onChangeText={(text) => onChangeSocial(text, key)}
+                                        disabled={isLoading || !context.isConnected}
+                                    />
+                                ))}
+                            </View>
+                        }
+
+                        <View style={Style.textsContainer}>
+                            <TouchableOpacity onPress={() =>  onChange(!fields.showSocialLinks, "showSocialLinks")}>
+                                <Text style={{color: Colors.primary}}>{fields.showSocialLinks ? language.hideSocialLinks : language.showSocialLinks}</Text>
+                            </TouchableOpacity>
+
+                            {fields.showSocialLinks && <TouchableOpacity onPress={() =>  onChange(!fields.showQrCodeModal, "showQrCodeModal")}>
+                                <Text style={{color: Colors.primary}}>{language.generateQrCode}</Text>
+                            </TouchableOpacity>}
+                        </View>
+
+                        {context.isGuest && <Text style={Style.dataDeleteMsg}>{language.yourDataWillBeAutomatically}</Text>}
+                        <Button style={Style.button} onPress={updateHandler} isLoading={isLoading} disabled={isLoading || !context.isConnected || context.isGuest}>{language.update}</Button>
+                        <QRcodeGenerator
+                            socialLinks={fields.socialLinks}
+                            visible={fields.showQrCodeModal}
+                            onDismiss={() => onChange(false, "showQrCodeModal")}
+                        />
+                    </View>
+                </ScrollView>
                 <Text style={Style.founder}>{language.founder}</Text>
             </View>
         </View>

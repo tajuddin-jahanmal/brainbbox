@@ -512,7 +512,7 @@ const CashOut = (props) =>
         if (!transactionEdit && fields.amount > CashBook.cash || CashBook.cash === undefined)
         {
             setIsLoading(false);
-            Alert.alert(language.info, language.heDontHaveEnoughCash, [
+            Alert.alert(language.info, language.insufficientCashIsAvailable, [
             {
                 text: language.cancel,
                 onPress: () => {
