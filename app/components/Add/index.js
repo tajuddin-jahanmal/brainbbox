@@ -1,7 +1,7 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import React from "react";
 import { TouchableOpacity } from "react-native";
 import Style from "./Style";
-import Ionicons from '@expo/vector-icons/Ionicons';
 
 const Add = (props) =>
 {
