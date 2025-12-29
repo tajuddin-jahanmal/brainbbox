@@ -206,17 +206,23 @@ const Profile = (props) =>
                             </View>
                         }
 
-                        <View style={Style.textsContainer}>
-                            <TouchableOpacity onPress={() =>  onChange(!fields.showSocialLinks, "showSocialLinks")}>
-                                <Text style={{color: Colors.primary}}>{fields.showSocialLinks ? language.hideSocialLinks : language.showSocialLinks}</Text>
-                            </TouchableOpacity>
+                        {
+                            !context.isGuest &&
+                            <View style={Style.textsContainer}>
+                                <TouchableOpacity onPress={() =>  onChange(!fields.showSocialLinks, "showSocialLinks")}>
+                                    <Text style={{color: Colors.primary}}>{fields.showSocialLinks ? language.hideSocialLinks : language.showSocialLinks}</Text>
+                                </TouchableOpacity>
 
-                            {fields.showSocialLinks && <TouchableOpacity onPress={() =>  onChange(!fields.showQrCodeModal, "showQrCodeModal")}>
-                                <Text style={{color: Colors.primary}}>{language.generateQrCode}</Text>
-                            </TouchableOpacity>}
-                        </View>
+                                {fields.showSocialLinks && <TouchableOpacity onPress={() =>  onChange(!fields.showQrCodeModal, "showQrCodeModal")}>
+                                    <Text style={{color: Colors.primary}}>{language.generateQrCode}</Text>
+                                </TouchableOpacity>}
+                            </View>
+                        }
 
-                        {context.isGuest && <Text style={Style.dataDeleteMsg}>{language.yourDataWillBeAutomatically}</Text>}
+                        {
+                            context.isGuest &&
+                            <Text style={Style.dataDeleteMsg}>{language.yourDataWillBeAutomatically}</Text>
+                        }
                         <Button style={Style.button} onPress={updateHandler} isLoading={isLoading} disabled={isLoading || !context.isConnected || context.isGuest}>{language.update}</Button>
                         <QRcodeGenerator
                             socialLinks={fields.socialLinks}

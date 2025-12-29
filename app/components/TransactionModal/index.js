@@ -1,7 +1,8 @@
 import React, { useContext } from "react";
-import { Modal, Text, TouchableOpacity, View } from "react-native";
+import { Image, Modal, Text, TouchableOpacity, View } from "react-native";
 import { ExchangeMoneyContext } from "../../ExchangeMoneyContext";
 import language from "../../localization";
+import { mainServerPath } from "../../utils/serverPath";
 import Button from "../Button";
 import Card from "../Card";
 import Style from "./Style";
@@ -11,6 +12,27 @@ const TransactionModal = (props) =>
 	const isRTL = language.isRtl;
     const context = useContext(ExchangeMoneyContext);
     // console.log("Rendering [TransactionModal.js]");
+
+    let photoUri = null;
+    const photo = props?.data?.photo;
+
+    if (typeof photo !== "string" || photo.trim() === "" || photo === "null" || photo === "undefined" ) {}
+    else {
+        if (photo.trim().startsWith("{")) {
+            try {
+            const parsed = JSON.parse(photo);
+            photoUri = parsed?.uri || null;
+            } catch (e) {
+            photoUri = null;
+            }
+        }
+        else {
+            photoUri = mainServerPath(photo);
+        }
+    }
+
+    console.log(props.data, 'transaction modal');
+    
 
     return (
         <View>
@@ -52,6 +74,17 @@ const TransactionModal = (props) =>
                                 <Text style={Style[props.data?.type ? "cashIn" : "cashOut"]}> {props.data?.information}</Text>
                             </Text>
                         </View>
+                        <View style={{...Style.titleContainer, ...{...isRTL && {justifyContent: "flex-end"}}}}>
+                            <Text style={Style[props.data?.type ? "cashIn" : "cashOut"]}>{language.photo}:</Text>
+                        </View>
+                        <>
+                            {photoUri?.length >= 1 && <View style={Style.photoContainer}>
+                                <Image
+                                    source={{ uri: photoUri }}
+                                    style={{ width: "100%", height: "100%" }}
+                                />
+                            </View>}
+                        </>
 
                         <View style={Style.buttonsContainer}>
                             <Button

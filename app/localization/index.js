@@ -154,6 +154,8 @@ const strings = new LocalizedStrings({
         hideSocialLinks: "Hide Social Links",
         shareYourSocial: "Share your social media links",
         generateQrCode: "Generate QR Code",
+        takePhoto: "Take Photo",
+        photo: "Photo",
     },
     ps: {
         isRtl: true,
@@ -306,6 +308,8 @@ const strings = new LocalizedStrings({
         hideSocialLinks: "ټولنیزې شبکې پټې کړئ",
         shareYourSocial: "خپل د ټولنیزو رسنیو لینکونه شریک کړئ",
         generateQrCode: "د QR کوډ جوړ کړئ",
+        takePhoto: "انځور واخلئ",
+        photo: "انځور",
     },
     pe: {
         isRtl: true,
@@ -458,6 +462,8 @@ const strings = new LocalizedStrings({
         hideSocialLinks: "پنهان کردن شبکه‌های اجتماعی",
         shareYourSocial: "لینک‌های شبکه‌های اجتماعی خود را به اشتراک بگذارید",
         generateQrCode: "تولید کد QR",
+        takePhoto: "عکس بگیرید",
+        photo: "عکس",
     },
     ur: {
         isRtl: true,
@@ -607,6 +613,8 @@ const strings = new LocalizedStrings({
         hideSocialLinks: "سوشل میڈیا چھپائیں",
         shareYourSocial: "اپنے سوشل میڈیا لنکس شیئر کریں",
         generateQrCode: "کیو آر کوڈ تیار کریں",
+        takePhoto: "تصویر لیں",
+        photo: "تصوير",
     }
 });
 

@@ -22,7 +22,7 @@ import Transaction from "../../DB/Transaction";
 import { ExchangeMoneyContext } from "../../ExchangeMoneyContext";
 import language from "../../localization";
 import useStore from "../../store/store";
-import serverPath from '../../utils/serverPath';
+import serverPath, { mainServerPath } from '../../utils/serverPath';
 import { SortCustomers } from "../../utils/SortData";
 import Style from "./Style";
 
@@ -878,10 +878,14 @@ const Home = (props) =>
 			if(!isFocused)
 				return 
 			const offlineQueue = await Queue.getQueueEntries();
+			const offlineTransactions = await Transaction.getTransactions();
 			if (offlineQueue.length > 0 && !hasUploadedRef.current) {
-				// I hasUploadedRef for to avoid twice data upload to server.
-				hasUploadedRef.current = true;
-				uploadData();
+				if (globalState.transactions.length >= 1 && offlineTransactions.length >= 1)
+				{
+					// I hasUploadedRef for to avoid twice data upload to server.
+					hasUploadedRef.current = true;
+					uploadData(offlineTransactions);
+				}
 			}
 			setOfflineQueueLength(offlineQueue.length);
 		})();
@@ -893,15 +897,16 @@ const Home = (props) =>
 	const uploadData = async () =>
 	{
 		const offlineQueue = await Queue.getQueueEntries();
-		const offlineTransactions = await Transaction.getTransactions();
 		const offlineSelfCash = await SelfCash.getSelfCash();
+		const offlineTransactions = await Transaction.getTransactions();
+		const transactionsClone = [...globalState.transactions];
 
 		if (offlineQueue.length > 0 && context.isConnected)
 		{
 			setIsLoading(true);
-			offlineQueue.forEach(async (q) =>
+			for (const q of offlineQueue)
 			{
-				console.log(q, 'q');
+				// console.log(q, 'q');
 				
 				switch (q.queryType) {
 					case "insert":
@@ -914,35 +919,61 @@ const Home = (props) =>
 									profit: Number.parseInt(data.profit),
 									currencyId: data.currencyId,
 									information: data.information,
-									providerId: context.user.id,
+									// providerId: context.user.id,
 									cashbookId: data.cashbookId,
 									dateTime: data.dateTime,
 									type: data.type,
 									isReceivedMobile: data.isReceivedMobile,
+									photo: data.photo,
 								}
-
-								const response = await fetch(serverPath("/transaction"), {
+								
+								const formData = new FormData();
+								formData.append("amount", String(data.amount));
+								formData.append("profit", String(data.profit || 0));
+								formData.append("currencyId", String(data.currencyId));
+								formData.append("information", data.information || "");
+								formData.append("cashbookId", String(data.cashbookId));
+								formData.append("dateTime", String(data.dateTime));
+								formData.append("type", String(data.type));
+								formData.append("isReceivedMobile", "true");
+								
+								if (data.photo)
+								{
+									const parsePhoto = JSON.parse(data.photo);
+									if (parsePhoto?.uri)
+									{
+										formData.append("photo", {
+											uri: parsePhoto.uri,
+											name: "transaction.jpg",
+											type: parsePhoto.mimeType || "image/jpeg",
+										});
+									}
+								}
+					
+								const response = await fetch(mainServerPath("/transaction_file"), {
 									method: "POST",
-									headers: {
-											"Content-Type": "Application/JSON",
-									},
-									body: JSON.stringify(requestData)
+									body: formData
 								});
+
+								// const response = await fetch(serverPath("/transaction"), {
+								// 	method: "POST",
+								// 	headers: {
+								// 			"Content-Type": "Application/JSON",
+								// 	},
+								// 	body: JSON.stringify(requestData)
+								// });
 								const objData = await response.json();
 								if (objData.status === "success")
 								{
-									const { id, amount, profit, information, currencyId, cashbookId, type, dateTime } = objData.data;
+									const { id, amount, profit, information, currencyId, cashbookId, type, dateTime, photo } = objData.data[0];
 									const findOfflineTran = offlineTransactions?.find(per => per._id === data.id);
 									Queue.deleteQueueEntry(q.id);
-									Transaction.updateTransaction(findOfflineTran.id, id, amount, profit, information, currencyId, cashbookId, type, dateTime);
-
-									const transactionsClone = [...globalState.transactions];
+									Transaction.updateTransaction(findOfflineTran.id, id, amount, profit, information, currencyId, cashbookId, type, dateTime, true, photo);
 									if (transactionsClone.length >= 1)
 									{
-										const transIndex = transactionsClone.findIndex(tran => tran.id === data.id);
+										const transIndex = transactionsClone.findIndex(tran => tran?._id === data.id);
 										if (transIndex >= 0)
-											transactionsClone[transIndex] = objData.data;
-										dispatch("setTransactions", transactionsClone);
+											transactionsClone[transIndex] = objData.data[0];
 									}
 								}
 								if (objData.status === "failure")
@@ -1097,7 +1128,10 @@ const Home = (props) =>
 
 				setOfflineQueueLength(0);
 				hasUploadedRef.current = false;
-			})
+			}
+			console.log(transactionsClone, "transactionsClone");
+			
+			dispatch("setTransactions", transactionsClone);
 		}
 	};
 	

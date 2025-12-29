@@ -1,6 +1,8 @@
+import Feather from "@expo/vector-icons/Feather";
 import { useIsFocused } from "@react-navigation/core";
+import * as ImagePicker from "expo-image-picker";
 import { useContext, useEffect, useState } from "react";
-import { Alert, View } from "react-native";
+import { Alert, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SelectList } from "react-native-dropdown-select-list";
 import Toast from "react-native-toast-message";
 import Customers from "../../DB/Customer";
@@ -11,14 +13,16 @@ import WeeklyBalances from "../../DB/WeeklyBalances";
 import { ExchangeMoneyContext } from "../../ExchangeMoneyContext";
 import { CashInOutValidationAlert } from "../../components/Alerts";
 import Button from "../../components/Button";
+import Card from "../../components/Card";
 import Header from "../../components/Header";
 import Input from "../../components/Input";
+import { isAndroid } from "../../constant";
 import language from "../../localization";
 import useStore from "../../store/store";
 import { getWeekRange } from "../../utils/dateMaker";
 import idGenerator from "../../utils/idGenerator";
 import isNumber from "../../utils/isNumber";
-import serverPath from "../../utils/serverPath";
+import serverPath, { mainServerPath } from "../../utils/serverPath";
 import Validation from "../../validator/CashInOut";
 import Style from "./Style";
 
@@ -36,6 +40,7 @@ const CashOut = (props) =>
         currencyId: context.currency?.id,
         cashbookId: "",
         information: "",
+		photo: null,
         type: false,
         showAlert: { visible: false, message: "" },
         currenciesData: [],
@@ -137,6 +142,25 @@ const CashOut = (props) =>
 			})
 		})();
 	}, [globalState.customers, isFocused, fields.cashbookId, fields.currencyId]);
+
+	const takePhoto = async () => {
+		const permission = await ImagePicker.requestCameraPermissionsAsync();
+		if (!permission.granted) {
+			Alert.alert("Alert", "Camera permission required!");
+			return;
+		}
+
+		if (fields.photo)
+			return;
+
+		const result = await ImagePicker.launchCameraAsync({
+			mediaTypes: ["images"],
+			quality: 0.7,
+		});
+
+		if (!result.canceled)
+			onChange(result.assets[0], "photo");
+	};
 
     // IN EDIT HANDLER I DON'T DID THE CODE FOR SELFCASH BECAUSE NOW WE DON'T USE SELFCASH
 	const editHandler = async () =>
@@ -483,11 +507,12 @@ const CashOut = (props) =>
             profit: fields.profit || 0,
             currencyId: fields.currencyId,
             information: fields.information,
-            providerId: context.user.id,
+            // providerId: context.user.id,
 			cashbookId: (fromCashbook ? fields.cashbookId : cashbookId),
             // dateTime: new Date().toString(),
             dateTime: new Date().toISOString(),
             type: fields.type,
+			photo: fields.photo,
 			isReceivedMobile: true,
         };
 
@@ -553,12 +578,13 @@ const CashOut = (props) =>
                 requestData.id = idGenerator();
                 requestData.amount = Number(requestData.amount);
 				requestData.profit = Number(requestData.profit);
+				requestData.photo = JSON.stringify(requestData.photo);
                 if (selfCash)
                     Queue.createQueueEntry("insert", requestData.id, "selfCash", JSON.stringify(requestData), null);
                 else
                     Queue.createQueueEntry("insert", requestData.id, "transactions", JSON.stringify(requestData), null);
 
-                submitedDataHandler({data: requestData});
+                submitedDataHandler({data: [requestData]});
                 return;
             }
 
@@ -581,14 +607,36 @@ const CashOut = (props) =>
                     return;
                 }
             }
+
+			const formData = new FormData();
+			formData.append("amount", String(fields.amount));
+			formData.append("profit", String(fields.profit || 0));
+			formData.append("currencyId", String(fields.currencyId));
+			formData.append("information", fields.information || "");
+			formData.append("cashbookId", String(fromCashbook ? fields.cashbookId : cashbookId));
+			formData.append("dateTime", new Date().toISOString());
+			formData.append("type", String(fields.type));
+			formData.append("isReceivedMobile", "true");
+			if (fields.photo?.uri) {
+				formData.append("photo", {
+					uri: fields.photo.uri,
+					name: "transaction.jpg",
+					type: fields.photo.mimeType || "image/jpeg",
+				});
+			}
             
-            const response = await fetch(serverPath("/transaction"), {
-                method: "POST",
-                headers: {
-                        "Content-Type": "Application/JSON",
-                },
-                body: JSON.stringify(requestData)
-            });
+            // const response = await fetch(serverPath("/transaction"), {
+            //     method: "POST",
+            //     headers: {
+            //             "Content-Type": "Application/JSON",
+            //     },
+            //     body: JSON.stringify(requestData)
+            // });
+
+			const response = await fetch(mainServerPath("/transaction_file"), {
+				method: "POST",
+				body: formData
+			});
 
             const objData = await response.json();
 
@@ -611,7 +659,8 @@ const CashOut = (props) =>
 	{
 		if (selfCash)
 		{
-            const data = objData.data;
+			// const data = objData.data; => THIS CODE IS FOR TRANSACTION
+			const data = objData.data[0]; // => THIS CODE IS FOR TRANSACTION WITH PHOTO
 			data.amount = Number(data.amount);
 			data.profit = Number(data.profit);
 			data.currencyId = Number(data.currencyId);
@@ -629,6 +678,7 @@ const CashOut = (props) =>
                 objData.data.cashbookId,
                 objData.data.type,
                 objData.data.dateTime
+				// THE SELFCASH DON'T HAVE PHOTO IN LOCAL DATABASE.
             );
 
             setFields(initState);
@@ -656,15 +706,25 @@ const CashOut = (props) =>
     {
 		// WITH newTransaction WE HAVE THE _ID AND ID OTHER WAYS WE ONLY HAVE THE ID NOT _ID
 		const newTransaction = await TransactionDB.createTransaction(
-			objData.data.id,
-			objData.data.amount,
-			objData.data.profit,
-			objData.data.information,
-			objData.data.currencyId,
-			objData.data.cashbookId,
-			objData.data.type,
-			objData.data.dateTime,
-			objData.data.isReceivedMobile,
+			// objData.data.id, // THIS CODE IS FOR TRANSACTION
+			// objData.data.amount,
+			// objData.data.profit,
+			// objData.data.information,
+			// objData.data.currencyId,
+			// objData.data.cashbookId,
+			// objData.data.type,
+			// objData.data.dateTime,
+			// objData.data.isReceivedMobile,
+			objData.data[0].id, // THIS CODE IS FOR TRANSACTION WITH PHOTO
+			objData.data[0].amount,
+			objData.data[0].profit,
+			objData.data[0].information,
+			objData.data[0].currencyId,
+			objData.data[0].cashbookId,
+			objData.data[0].type,
+			objData.data[0].dateTime,
+			objData.data[0].isReceivedMobile,
+			objData.data[0].photo,
 		);
         
         let cloneCustomers = [...globalState.customers];
@@ -736,79 +796,98 @@ const CashOut = (props) =>
         <View style={Style.container}>
             <Header title={`${transactionEdit ? language.edit : language.add} ${language.cashOut}`} goBack={goBack} />
             <View style={Style.content}>
-                <View style={Style.form}>
-                    <Input placeholder={language.amount} value={fields.amount} onChangeText={(text) => onChange(text, "amount")} keyboardType="numeric" disabled={isLoading} />
-                    {/* <Input placeholder="Currency" value={globalState.currencies.find(curr => curr.id === fields.currencyId).code} disabled={true} /> */}
-                    {!transactionEdit && <SelectList
-						setSelected={(val) => onChange(Number(val), "currencyId")} 
-						data={fields.currenciesData}
-						// save={context.currency.code}
-						save={"key"}
-						search={false}
-                        placeholder={context.currency?.code}
-						boxStyles={Style.dropDown}
-						dropdownStyles={Style.dropdownMenu}
-                        disabled={isLoading}
-					/>}
+				<ScrollView keyboardShouldPersistTaps="handled">
+					<View style={Style.form}>
+						<Input placeholder={language.amount} value={fields.amount} onChangeText={(text) => onChange(text, "amount")} keyboardType="numeric" disabled={isLoading} />
+						{/* <Input placeholder="Currency" value={globalState.currencies.find(curr => curr.id === fields.currencyId).code} disabled={true} /> */}
+						{!transactionEdit && <SelectList
+							setSelected={(val) => onChange(Number(val), "currencyId")} 
+							data={fields.currenciesData}
+							// save={context.currency.code}
+							save={"key"}
+							search={false}
+							placeholder={context.currency?.code}
+							boxStyles={Style.dropDown}
+							dropdownStyles={Style.dropdownMenu}
+							disabled={isLoading}
+						/>}
 
-					{/* {fromCashbook && (
-						<SelectList
-							setSelected={(val) => {
-								if (val) {
-									const selectedCustomer = globalState.customers.find(c => 
-										c.id === val || c._id === val || c.customer?.id === val
-									);
-									if (selectedCustomer) {
-										const selectedId = 
-											selectedCustomer?.summary?.[0]?.cashbookId || 
-											selectedCustomer?._id || 
-											selectedCustomer?.id;
+						{/* {fromCashbook && (
+							<SelectList
+								setSelected={(val) => {
+									if (val) {
+										const selectedCustomer = globalState.customers.find(c => 
+											c.id === val || c._id === val || c.customer?.id === val
+										);
+										if (selectedCustomer) {
+											const selectedId = 
+												selectedCustomer?.summary?.[0]?.cashbookId || 
+												selectedCustomer?._id || 
+												selectedCustomer?.id;
+											onChange(selectedId, "cashbookId");
+										}
+									}
+								}}
+								data={globalState.customers.map((item) => ({
+									key: item.id || item._id || item.customer?.id,
+									value: `${item.customer?.firstName || item.firstName || "Unknown"} ${item.customer?.lastName || item.lastName || ""}`,
+									details: `${item.customer?.phone || item.phone || "N/A"} - ${item.customer?.email || item.email || "N/A"}`,
+								}))}
+								save="key"
+								searchPlaceholder="Search Customer"
+								placeholder="Select Customer"
+								search={false}
+								keyboardShouldPersistTaps="handled"
+							/>
+						)} */}
+						{fromCashbook && (
+							<SelectList
+								setSelected={(val) => {
+									if (val) {
+										const selectedId =
+												val?.summary?.[0]?.cashbookId || val?._id || val?.id;
+												// val?.summary?.[0]?.cashbookId || val?.id || val?._id;
 										onChange(selectedId, "cashbookId");
 									}
-								}
-							}}
-							data={globalState.customers.map((item) => ({
-								key: item.id || item._id || item.customer?.id,
-								value: `${item.customer?.firstName || item.firstName || "Unknown"} ${item.customer?.lastName || item.lastName || ""}`,
-								details: `${item.customer?.phone || item.phone || "N/A"} - ${item.customer?.email || item.email || "N/A"}`,
-							}))}
-							save="key"
-							searchPlaceholder="Search Customer"
-							placeholder="Select Customer"
-							search={false}
-							keyboardShouldPersistTaps="handled"
-						/>
-					)} */}
-                    {fromCashbook && (
-                        <SelectList
-                            setSelected={(val) => {
-                                if (val) {
-                                    const selectedId =
-                                            val?.summary?.[0]?.cashbookId || val?._id || val?.id;
-                                            // val?.summary?.[0]?.cashbookId || val?.id || val?._id;
-                                    onChange(selectedId, "cashbookId");
-                                }
-                            }}
-                            data={globalState?.customers?.map((item) => ({
-                                // value: item.customer?.firstName || "Unknown Customer",
-                                // details: `${item.customer?.phone || "N/A"} - ${item.customer?.email || "N/A"}`,
-                                key: item.id || item.customer?.id,
-                                value: item || "Unknown Customer",
-                                details: `${item?.phone || "N/A"} - ${item?.email || "N/A"}`,
-                            }))}
-                            save="customer"
-                            searchPlaceholder="Search Customer"
-                            placeholder="Select Customer"
-                            isForPhone={true}
-                            searchicon={false}
-                            search={false}
-                        />
-                    )}
-                    <Input placeholder={language.profit} value={fields.profit} onChangeText={(text) => onChange(text, "profit")} keyboardType="numeric" disabled={isLoading} />
-                    <Input placeholder={language.information} value={fields.information} onChangeText={(text) => onChange(text, "information")} type="textarea" disabled={isLoading} />
+								}}
+								data={globalState?.customers?.map((item) => ({
+									// value: item.customer?.firstName || "Unknown Customer",
+									// details: `${item.customer?.phone || "N/A"} - ${item.customer?.email || "N/A"}`,
+									key: item.id || item.customer?.id,
+									value: item || "Unknown Customer",
+									details: `${item?.phone || "N/A"} - ${item?.email || "N/A"}`,
+								}))}
+								save="customer"
+								searchPlaceholder="Search Customer"
+								placeholder="Select Customer"
+								isForPhone={true}
+								searchicon={false}
+								search={false}
+							/>
+						)}
+						<Input placeholder={language.profit} value={fields.profit} onChangeText={(text) => onChange(text, "profit")} keyboardType="numeric" disabled={isLoading} />
+						<Input placeholder={language.information} value={fields.information} onChangeText={(text) => onChange(text, "information")} type="textarea" disabled={isLoading} />
 
-                    <Button style={Style.submit} onPress={submitHandler} isLoading={isLoading} disabled={isLoading}>{transactionEdit ? language.edit : language.submit}</Button>
-                </View>
+						{(!transactionEdit && !context.isGuest) && <Card style={Style.takePhotoContainer} onPress={takePhoto} activeOpacity={1}>
+							{
+								fields.photo ?
+								<View style={Style.photoContainer}>
+									<Image
+										source={{ uri: fields.photo.uri }}
+										style={{ width: "100%", height: "100%" }}
+									/>
+									<TouchableOpacity style={{...Style.trashContainer}} onPress={() => onChange(null, "photo")}>
+										<Feather name="trash-2" size={20} color={"rgba(240, 0, 41, 0.6)"} />
+									</TouchableOpacity>
+								</View>
+								:
+								<Text style={{color: isAndroid ? "#808080" : "#C7C7CD"}}>{language.takePhoto}</Text>
+							}
+						</Card>}
+
+						<Button style={Style.submit} onPress={submitHandler} isLoading={isLoading} disabled={isLoading}>{transactionEdit ? language.edit : language.submit}</Button>
+					</View>
+				</ScrollView>
             </View>
 
             <CashInOutValidationAlert
