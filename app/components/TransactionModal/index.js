@@ -31,9 +31,6 @@ const TransactionModal = (props) =>
         }
     }
 
-    console.log(props.data, 'transaction modal');
-    
-
     return (
         <View>
             <Modal

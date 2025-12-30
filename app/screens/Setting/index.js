@@ -251,6 +251,7 @@ const Setting = (props) =>
     function groupTransactionsByDay(transactions, firstOpeningBalance = 0, cutoffDate = null)
     {
         const dailyGroups = {};
+        const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kabul";
 
         // Sort transactions by date ascending
         const sorted = [...transactions].sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
@@ -262,7 +263,8 @@ const Setting = (props) =>
             // Skip transactions after the cutoff date
             if (cutoffDate && tDate > cutoffDate) continue;
 
-            const dateKey = tDate.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+            // const dateKey = tDate.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+            const dateKey = getLocalDateKey(t.dateTime);
 
             if (!dailyGroups[dateKey]) {
                 dailyGroups[dateKey] = { 
@@ -303,6 +305,18 @@ const Setting = (props) =>
 
         return dailyGroups;
     }
+
+    function getLocalDateKey(date) {
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kabul";
+
+        return new Intl.DateTimeFormat("en-CA", {
+            timeZone,
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+        }).format(new Date(date));
+    }
+
 
 
     const dailyReport = async (from, to) =>

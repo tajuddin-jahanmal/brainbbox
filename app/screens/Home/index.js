@@ -1129,8 +1129,6 @@ const Home = (props) =>
 				setOfflineQueueLength(0);
 				hasUploadedRef.current = false;
 			}
-			console.log(transactionsClone, "transactionsClone");
-			
 			dispatch("setTransactions", transactionsClone);
 		}
 	};
