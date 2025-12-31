@@ -2,7 +2,7 @@
   "expo": {
     "name": "Brainbbox",
     "slug": "brainbbox",
-    "version": "1.2.11",
+    "version": "1.2.12",
     "orientation": "portrait",
     "icon": "./app/assets/icon.png",
     "userInterfaceStyle": "light",

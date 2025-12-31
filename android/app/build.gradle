@@ -95,8 +95,8 @@ android {
         // targetSdkVersion rootProject.ext.targetSdkVersion
         minSdkVersion = 24
         targetSdkVersion 35
-        versionCode 20
-        versionName "1.2.11"
+        versionCode 21
+        versionName "1.2.12"
     }
     signingConfigs {
         debug {
@@ -121,7 +121,7 @@ android {
             // see https://reactnative.dev/docs/signed-apk-android.
             signingConfig signingConfigs.release
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
-            minifyEnabled enableProguardInReleaseBuilds
+            minifyEnabled true
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
             crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
         }
