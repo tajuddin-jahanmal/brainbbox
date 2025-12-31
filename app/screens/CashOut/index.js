@@ -1,5 +1,6 @@
 import Feather from "@expo/vector-icons/Feather";
 import { useIsFocused } from "@react-navigation/core";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { useContext, useEffect, useState } from "react";
 import { Alert, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -161,6 +162,19 @@ const CashOut = (props) =>
 		if (!result.canceled)
 			onChange(result.assets[0], "photo");
 	};
+
+	async function resizeImage(uri) {
+			const result = await ImageManipulator.manipulateAsync(
+				uri,
+				[{ resize: { width: 800 } }], // keep aspect ratio
+				{
+					compress: 0.7,               // 0 → 1
+					format: ImageManipulator.SaveFormat.JPEG,
+				}
+			);
+	
+			return result; // { uri, width, height, base64? }
+		}
 
     // IN EDIT HANDLER I DON'T DID THE CODE FOR SELFCASH BECAUSE NOW WE DON'T USE SELFCASH
 	const editHandler = async () =>
@@ -618,9 +632,10 @@ const CashOut = (props) =>
 			formData.append("type", String(fields.type));
 			formData.append("isReceivedMobile", "true");
 			if (fields.photo?.uri) {
+				const resized = await resizeImage(fields.photo.uri);
 				formData.append("photo", {
-					uri: fields.photo.uri,
-					name: "transaction.jpg",
+					uri: resized.uri,
+					name: "transaction.jpeg",
 					type: fields.photo.mimeType || "image/jpeg",
 				});
 			}

@@ -1,4 +1,5 @@
 import Feather from "@expo/vector-icons/Feather";
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from "expo-image-picker";
 import { useNavigation } from 'expo-router';
 import { memo, useContext, useEffect, useState } from "react";
@@ -135,6 +136,19 @@ const CashIn = (props) =>
 		if (!result.canceled)
 			onChange(result.assets[0], "photo");
 	};
+
+	async function resizeImage(uri) {
+		const result = await ImageManipulator.manipulateAsync(
+			uri,
+			[{ resize: { width: 800 } }], // keep aspect ratio
+			{
+				compress: 0.7,               // 0 → 1
+				format: ImageManipulator.SaveFormat.JPEG,
+			}
+		);
+
+		return result; // { uri, width, height, base64? }
+	}
 	
 	// IN EDIT HANDLER I DON'T DID THE CODE FOR SELFCASH BECAUSE NOW WE DON'T USE SELFCASH
 	const editHandler = async () =>
@@ -556,48 +570,6 @@ const CashIn = (props) =>
 				}
 			}
 
-			//  {"data": [
-				// {
-					// "amount": 147,
-					// "cashbookId": 2,
-					// "createdAt": "2025-12-28T02:29:37.846Z",
-					// "currencyId": 1,
-					// "dateTime": "2025-12-28T02:29:37.486Z",
-					// "id": 87,
-					// "information": "Fg",
-					// "isReceivedMobile": true,
-					// "photo": "\\images\\uploads\\12-28-2025\\fca9503dba96a97781a311906.017573009079055435.jpg",
-					// "profit": 0,
-					// "type": true,
-					// "updatedAt": "2025-12-28T02:29:37.846Z"}
-			// ], "status": "success"}
-
-// 			{
-			// "amount": 321,
-			// "cashbookId": 2,
-			// "currencyId": 1,
-			// "dateTime": "2025-12-28T02:30:59.854Z",
-			// "id": "Qeh6jxiB8h5f",
-			// "information": "Aaa",
-			// "isReceivedMobile": true,
-			// "photo": {
-				// "assetId": null, 
-				// "base64": null,
-				// "duration": null,
-				// "exif": null,
-				// "fileName": "c7f2aff6-e5eb-4017-8362-9277a42cad61.jpeg",
-				// "fileSize": 1841181,
-				// "height": 4608,
-				// "mimeType": "image/jpeg",
-				// "rotation": null,
-				// "type": "image",
-				// "uri": "file:///data/user/0/com.mosaaghajahanmal.brainbbox/cache/ImagePicker/065035cd-011d-4fe5-8cce-f2b36c26ec3d.jpeg",
-				// "width": 3456
-				// },
-			// "profit": 0,
-			// "type": true
-			// }
-
 			const formData = new FormData();
 			formData.append("amount", String(fields.amount));
 			formData.append("profit", String(fields.profit || 0));
@@ -608,9 +580,10 @@ const CashIn = (props) =>
 			formData.append("type", String(fields.type));
 			formData.append("isReceivedMobile", "true");
 			if (fields.photo?.uri) {
+				const resized = await resizeImage(fields.photo.uri);
 				formData.append("photo", {
-					uri: fields.photo.uri,
-					name: "transaction.jpg",
+					uri: resized.uri,
+					name: "transaction.jpeg",
 					type: fields.photo.mimeType || "image/jpeg",
 				});
 			}

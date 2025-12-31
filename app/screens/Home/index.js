@@ -4,6 +4,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/core";
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useNavigation } from "expo-router";
 import { useContext, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
@@ -75,6 +76,20 @@ const Home = (props) =>
 
 	// SERVER
 	// AddCustomer emil not require
+
+
+	async function resizeImage(uri) {
+		const result = await ImageManipulator.manipulateAsync(
+			uri,
+			[{ resize: { width: 800 } }], // keep aspect ratio
+			{
+				compress: 0.7,               // 0 → 1
+				format: ImageManipulator.SaveFormat.JPEG,
+			}
+		);
+
+		return result; // { uri, width, height, base64? }
+	}
 
 
 	// Helper function to set customers from local DB
@@ -942,9 +957,10 @@ const Home = (props) =>
 									const parsePhoto = JSON.parse(data.photo);
 									if (parsePhoto?.uri)
 									{
+										const resized = await resizeImage(parsePhoto?.uri);
 										formData.append("photo", {
-											uri: parsePhoto.uri,
-											name: "transaction.jpg",
+											uri: resized.uri,
+											name: "transaction.jpeg",
 											type: parsePhoto.mimeType || "image/jpeg",
 										});
 									}
